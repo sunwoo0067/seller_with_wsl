@@ -3,6 +3,7 @@
 """
 
 import pytest
+import asyncio
 from unittest.mock import Mock, AsyncMock, patch
 import json
 from decimal import Decimal
@@ -45,8 +46,8 @@ class TestCoupangUploader:
             description="고품질 블루투스 5.0 이어폰",
             price=29900,
             cost=15000,
-            category="전자기기/이어폰",
-            stock_quantity=100,
+            category_name="전자기기/이어폰",
+            stock=100,
             brand="TestBrand",
             images=[
                 ProductImage(url="https://example.com/main.jpg", is_main=True),
@@ -66,16 +67,14 @@ class TestCoupangUploader:
         assert uploader.base_url == "https://api-gateway-it.coupang.com"
         assert "전자기기/이어폰" in uploader.category_mapping
     
-    @pytest.mark.asyncio
-    async def test_validate_product_success(self, uploader, sample_product):
+    def test_validate_product_success(self, uploader, sample_product):
         """상품 검증 성공 테스트"""
-        is_valid, error = await uploader.validate_product(sample_product)
+        is_valid, error = asyncio.run(uploader.validate_product(sample_product))
         
         assert is_valid is True
         assert error is None
     
-    @pytest.mark.asyncio
-    async def test_validate_product_fail(self, uploader):
+    def test_validate_product_fail(self, uploader):
         """상품 검증 실패 테스트"""
         invalid_product = StandardProduct(
             id="invalid-001",
@@ -84,12 +83,12 @@ class TestCoupangUploader:
             name="",  # 빈 상품명
             price=50,  # 너무 낮은 가격
             cost=30,
-            category="미지원카테고리",
-            stock_quantity=0,
+            category_name="미지원카테고리",
+            stock=0,
             images=[]  # 이미지 없음
         )
         
-        is_valid, error = await uploader.validate_product(invalid_product)
+        is_valid, error = asyncio.run(uploader.validate_product(invalid_product))
         
         assert is_valid is False
         assert "상품명 누락" in error
@@ -97,10 +96,9 @@ class TestCoupangUploader:
         assert "상품 이미지가 없습니다" in error
         assert "지원하지 않는 카테고리" in error
     
-    @pytest.mark.asyncio
-    async def test_transform_product(self, uploader, sample_product):
+    def test_transform_product(self, uploader, sample_product):
         """상품 변환 테스트"""
-        coupang_data = await uploader.transform_product(sample_product)
+        coupang_data = asyncio.run(uploader.transform_product(sample_product))
         
         assert coupang_data["displayCategoryCode"] == "1001"
         assert coupang_data["sellerProductName"] == sample_product.name
@@ -113,8 +111,7 @@ class TestCoupangUploader:
         assert len(coupang_data["items"]) == 1
         assert coupang_data["sellerProductId"] == "cp-test-001"
     
-    @pytest.mark.asyncio
-    async def test_transform_product_with_variants(self, uploader):
+    def test_transform_product_with_variants(self, uploader):
         """옵션이 있는 상품 변환 테스트"""
         product_with_variants = StandardProduct(
             id="cp-test-002",
@@ -123,36 +120,36 @@ class TestCoupangUploader:
             name="테스트 티셔츠",
             price=19900,
             cost=10000,
-            category="의류/여성의류",
-            stock_quantity=100,
+            category_name="의류/여성의류",
+            stock=100,
             variants=[
                 ProductVariant(
-                    name="사이즈",
-                    option_value="S",
+                    sku="cp-test-002-S",
+                    options={"사이즈": "S"},
                     price=19900,
-                    stock_quantity=30,
+                    stock=30,
                     barcode="1234567890123"
                 ),
                 ProductVariant(
-                    name="사이즈",
-                    option_value="M",
+                    sku="cp-test-002-M",
+                    options={"사이즈": "M"},
                     price=19900,
-                    stock_quantity=40
+                    stock=40
                 ),
                 ProductVariant(
-                    name="사이즈",
-                    option_value="L",
+                    sku="cp-test-002-L",
+                    options={"사이즈": "L"},
                     price=19900,
-                    stock_quantity=30
+                    stock=30
                 )
             ]
         )
         
-        coupang_data = await uploader.transform_product(product_with_variants)
+        coupang_data = asyncio.run(uploader.transform_product(product_with_variants))
         
         items = coupang_data["items"]
         assert len(items) == 3
-        assert items[0]["itemName"] == "사이즈"
+        assert items[0]["itemName"] == "S"  # 옵션값이 itemName이 됨
         assert items[0]["externalVendorSku"] == "cp-test-002-S"
         assert items[0]["barcode"] == "1234567890123"
         assert items[1]["emptyBarcode"] is True
@@ -171,8 +168,7 @@ class TestCoupangUploader:
         assert headers["X-Requested-By"] == "A00000000"
         assert headers["Content-Type"] == "application/json;charset=UTF-8"
     
-    @pytest.mark.asyncio
-    async def test_upload_single_success(self, uploader):
+    def test_upload_single_success(self, uploader):
         """단일 상품 업로드 성공 테스트"""
         mock_response = {
             "code": "SUCCESS",
@@ -185,14 +181,13 @@ class TestCoupangUploader:
         with patch.object(uploader, '_api_request', new_callable=AsyncMock) as mock_api:
             mock_api.return_value = mock_response
             
-            result = await uploader.upload_single({"test": "data"})
+            result = asyncio.run(uploader.upload_single({"test": "data"}))
         
         assert result["success"] is True
         assert result["product_id"] == "1234567890"
         assert result["message"] == "상품 등록 성공"
     
-    @pytest.mark.asyncio
-    async def test_upload_single_fail(self, uploader):
+    def test_upload_single_fail(self, uploader):
         """단일 상품 업로드 실패 테스트"""
         mock_response = {
             "code": "ERROR",
@@ -202,14 +197,13 @@ class TestCoupangUploader:
         with patch.object(uploader, '_api_request', new_callable=AsyncMock) as mock_api:
             mock_api.return_value = mock_response
             
-            result = await uploader.upload_single({"test": "data"})
+            result = asyncio.run(uploader.upload_single({"test": "data"}))
         
         assert result["success"] is False
         assert result["error"] == "필수 항목이 누락되었습니다"
         assert result["code"] == "ERROR"
     
-    @pytest.mark.asyncio
-    async def test_update_single(self, uploader):
+    def test_update_single(self, uploader):
         """상품 수정 테스트"""
         mock_response = {
             "code": "SUCCESS",
@@ -219,7 +213,7 @@ class TestCoupangUploader:
         with patch.object(uploader, '_api_request', new_callable=AsyncMock) as mock_api:
             mock_api.return_value = mock_response
             
-            result = await uploader.update_single("1234567890", {"test": "data"})
+            result = asyncio.run(uploader.update_single("1234567890", {"test": "data"}))
         
         assert result["success"] is True
         assert result["product_id"] == "1234567890"
@@ -228,8 +222,7 @@ class TestCoupangUploader:
         call_args = mock_api.call_args
         assert call_args[1]["json"]["productId"] == "1234567890"
     
-    @pytest.mark.asyncio
-    async def test_check_product_status(self, uploader):
+    def test_check_product_status(self, uploader):
         """상품 상태 확인 테스트"""
         mock_response = {
             "code": "SUCCESS",
@@ -242,15 +235,14 @@ class TestCoupangUploader:
         with patch.object(uploader, '_api_request', new_callable=AsyncMock) as mock_api:
             mock_api.return_value = mock_response
             
-            result = await uploader.check_product_status("1234567890")
+            result = asyncio.run(uploader.check_product_status("1234567890"))
         
         assert result["success"] is True
         assert result["status"] == "APPROVED"
         assert result["status_name"] == "승인완료"
     
-    @pytest.mark.asyncio
-    async def test_close(self, uploader):
+    def test_close(self, uploader):
         """HTTP 클라이언트 종료 테스트"""
         with patch.object(uploader.client, 'aclose', new_callable=AsyncMock) as mock_close:
-            await uploader.close()
+            asyncio.run(uploader.close())
             mock_close.assert_called_once()

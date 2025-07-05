@@ -11,7 +11,7 @@ from typing import Dict, Any, List, Optional, Tuple
 from pathlib import Path
 
 from loguru import logger
-from tenacity import retry, stop_after_attempt, wait_exponential
+# tenacity 대신 수동 재시도 구현
 
 from dropshipping.models.product import StandardProduct
 from dropshipping.transformers.base import BaseTransformer
@@ -80,14 +80,25 @@ class BaseFetcher(ABC):
         """
         pass
 
-    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10))
     def fetch_with_retry(self, fetch_func, *args, **kwargs):
         """재시도 로직이 포함된 fetch 실행"""
-        try:
-            return fetch_func(*args, **kwargs)
-        except Exception as e:
-            logger.error(f"Fetch 실패: {str(e)}")
-            raise FetchError(f"Fetch 실패: {str(e)}")
+        max_retries = 3
+        retry_count = 0
+        wait_time = 4  # 초기 대기 시간
+        
+        while retry_count < max_retries:
+            try:
+                return fetch_func(*args, **kwargs)
+            except Exception as e:
+                retry_count += 1
+                if retry_count >= max_retries:
+                    logger.error(f"Fetch 최종 실패 (시도 {retry_count}/{max_retries}): {str(e)}")
+                    raise FetchError(f"Fetch 실패: {str(e)}")
+                
+                logger.warning(f"Fetch 실패 (시도 {retry_count}/{max_retries}): {str(e)}")
+                import time
+                time.sleep(wait_time)
+                wait_time = min(wait_time * 2, 10)  # 지수 백오프, 최대 10초
 
     def calculate_hash(self, data: Dict[str, Any]) -> str:
         """

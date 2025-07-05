@@ -8,9 +8,16 @@ from typing import Dict, Any, List, Optional, Tuple
 from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
-import pandas as pd
-import openpyxl
-from openpyxl.styles import Font, PatternFill, Alignment
+
+try:
+    import pandas as pd
+    import openpyxl
+    from openpyxl.styles import Font, PatternFill, Alignment
+    EXCEL_LIBS_AVAILABLE = True
+except ImportError:
+    EXCEL_LIBS_AVAILABLE = False
+    pd = None
+    openpyxl = None
 
 from loguru import logger
 
@@ -127,7 +134,7 @@ class GmarketExcelUploader(BaseUploader):
             "출고지주소": self.config.get("shipping_address", "서울특별시 강남구"),
             "반품지주소": self.config.get("return_address", "서울특별시 강남구"),
             "판매자상품코드": product.id,
-            "바코드": product.barcode or ""
+            "바코드": ""  # 기본 상품에는 바코드 없음
         }
         
         # 이미지 URL
@@ -140,7 +147,9 @@ class GmarketExcelUploader(BaseUploader):
         # 옵션 정보
         if product.variants:
             excel_data["옵션사용여부"] = "Y"
-            excel_data["옵션명"] = product.variants[0].name if product.variants else ""
+            # 첫 번째 옵션명 가져오기
+            option_names = list(product.variants[0].options.keys()) if product.variants else []
+            excel_data["옵션명"] = option_names[0] if option_names else "옵션"
             
             # 옵션값은 콤마로 구분
             option_values = []
@@ -148,7 +157,9 @@ class GmarketExcelUploader(BaseUploader):
             option_stocks = []
             
             for variant in product.variants:
-                option_values.append(variant.option_value)
+                # 첫 번째 옵션의 값 가져오기
+                option_value = list(variant.options.values())[0] if variant.options else ""
+                option_values.append(option_value)
                 option_prices.append("0")  # 추가금 없음
                 option_stocks.append(str(variant.stock))
             
@@ -332,6 +343,9 @@ class GmarketExcelUploader(BaseUploader):
     
     async def _create_excel_file(self, rows: List[Dict[str, Any]]) -> str:
         """Excel 파일 생성"""
+        
+        if not EXCEL_LIBS_AVAILABLE:
+            raise ImportError("pandas와 openpyxl이 설치되어 있지 않습니다. 'pip install pandas openpyxl'로 설치해주세요.")
         
         # DataFrame 생성
         df = pd.DataFrame(rows)

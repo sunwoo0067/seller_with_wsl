@@ -166,7 +166,7 @@ class CoupangUploader(BaseUploader):
             "attributes": [
                 {
                     "attributeTypeName": "수량",
-                    "attributeValueName": str(product.stock_quantity)
+                    "attributeValueName": str(product.stock)
                 }
             ],
             
@@ -184,9 +184,12 @@ class CoupangUploader(BaseUploader):
         if product.variants:
             # 옵션이 있는 경우
             for variant in product.variants:
+                # 첫 번째 옵션명과 값 가져오기
+                option_name = list(variant.options.keys())[0] if variant.options else "옵션"
+                option_value = list(variant.options.values())[0] if variant.options else ""
                 item = {
-                    "itemName": variant.name,
-                    "originalPrice": int(variant.price),
+                    "itemName": option_value,
+                    "originalPrice": int(variant.price) if variant.price else int(product.price),
                     "salePrice": int(variant.price * Decimal("0.9")),  # 10% 할인
                     "maximumBuyCount": 10,  # 최대 구매 수량
                     "maximumBuyForPerson": 5,  # 1인당 최대 구매
@@ -197,11 +200,11 @@ class CoupangUploader(BaseUploader):
                     "taxType": "TAX",  # 과세
                     "parallelImported": "NOT_PARALLEL_IMPORTED",  # 병행수입 아님
                     "overseasPurchased": "NOT_OVERSEAS_PURCHASED",  # 해외구매대행 아님
-                    "externalVendorSku": f"{product.id}-{variant.option_value}",
+                    "externalVendorSku": variant.sku,
                     "barcode": variant.barcode,
                     "emptyBarcode": not bool(variant.barcode),
                     "emptyBarcodeReason": "상품에 바코드 없음" if not variant.barcode else None,
-                    "modelNo": variant.attributes.get("model", ""),
+                    "modelNo": product.attributes.get("model", ""),
                     "certifications": []  # 인증 정보
                 }
                 items.append(item)

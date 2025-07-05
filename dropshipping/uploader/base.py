@@ -11,7 +11,6 @@ from enum import Enum
 import asyncio
 
 from loguru import logger
-from tenacity import retry, stop_after_attempt, wait_fixed, retry_if_exception_type
 
 from dropshipping.models.product import StandardProduct
 from dropshipping.storage.base import BaseStorage
@@ -343,11 +342,6 @@ class BaseUploader(ABC):
             "errors": []
         }
     
-    @retry(
-        stop=stop_after_attempt(3),
-        wait=wait_fixed(5),
-        retry=retry_if_exception_type(Exception)
-    )
     async def _api_request(
         self,
         method: str,
@@ -355,5 +349,16 @@ class BaseUploader(ABC):
         **kwargs
     ) -> Dict[str, Any]:
         """API 요청 (재시도 포함)"""
-        # 구체적인 구현은 각 업로더에서
-        raise NotImplementedError
+        # 수동 retry 로직
+        max_retries = self.max_retries
+        retry_delay = self.retry_delay
+        
+        for attempt in range(max_retries):
+            try:
+                # 구체적인 구현은 각 업로더에서
+                raise NotImplementedError
+            except Exception as e:
+                if attempt == max_retries - 1:
+                    raise
+                logger.warning(f"API 요청 실패 (시도 {attempt + 1}/{max_retries}): {str(e)}")
+                await asyncio.sleep(retry_delay)

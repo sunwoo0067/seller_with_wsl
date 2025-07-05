@@ -3,6 +3,7 @@ BaseUploader 테스트
 """
 
 import pytest
+import asyncio
 from unittest.mock import Mock, AsyncMock
 from datetime import datetime
 
@@ -75,8 +76,8 @@ class TestBaseUploader:
             name="테스트 상품",
             price=10000,
             cost=5000,
-            category="전자기기",
-            stock_quantity=100,
+            category_name="전자기기",
+            stock=100,
             images=[
                 ProductImage(url="https://example.com/image1.jpg", is_main=True)
             ]
@@ -90,10 +91,9 @@ class TestBaseUploader:
         assert uploader.batch_size == 5
         assert uploader.stats["uploaded"] == 0
     
-    @pytest.mark.asyncio
-    async def test_upload_product_success(self, uploader, sample_product):
+    def test_upload_product_success(self, uploader, sample_product):
         """상품 업로드 성공 테스트"""
-        result = await uploader.upload_product(sample_product)
+        result = asyncio.run(uploader.upload_product(sample_product))
         
         assert result["product_id"] == "test-001"
         assert result["status"] == UploadStatus.SUCCESS
@@ -103,8 +103,7 @@ class TestBaseUploader:
         assert result["uploaded_at"] is not None
         assert uploader.stats["uploaded"] == 1
     
-    @pytest.mark.asyncio
-    async def test_upload_product_validation_fail(self, uploader):
+    def test_upload_product_validation_fail(self, uploader):
         """상품 검증 실패 테스트"""
         invalid_product = StandardProduct(
             id="test-002",
@@ -113,18 +112,17 @@ class TestBaseUploader:
             name="",  # 빈 상품명
             price=10000,
             cost=5000,
-            category="전자기기",
-            stock_quantity=100
+            category_name="전자기기",
+            stock=100
         )
         
-        result = await uploader.upload_product(invalid_product)
+        result = asyncio.run(uploader.upload_product(invalid_product))
         
         assert result["status"] == UploadStatus.FAILED
         assert "상품명 누락" in result["errors"][0]
         assert uploader.stats["failed"] == 1
     
-    @pytest.mark.asyncio
-    async def test_upload_batch(self, uploader, sample_product):
+    def test_upload_batch(self, uploader, sample_product):
         """배치 업로드 테스트"""
         products = [
             sample_product,
@@ -132,22 +130,21 @@ class TestBaseUploader:
                 id="test-003",
                 supplier_id="domeme",
                 supplier_product_id="DM003",
-                name="테스트 상품 2",
+                name="테스트 상히 2",
                 price=20000,
                 cost=10000,
-                category="전자기기",
-                stock_quantity=50
+                category_name="전자기기",
+                stock=50
             )
         ]
         
-        results = await uploader.upload_batch(products, max_concurrent=2)
+        results = asyncio.run(uploader.upload_batch(products, max_concurrent=2))
         
         assert len(results) == 2
         assert all(r["status"] == UploadStatus.SUCCESS for r in results)
         assert uploader.stats["uploaded"] == 2
     
-    @pytest.mark.asyncio
-    async def test_upload_batch_with_errors(self, uploader, sample_product):
+    def test_upload_batch_with_errors(self, uploader, sample_product):
         """오류가 있는 배치 업로드 테스트"""
         # upload_product 메서드를 Mock하여 예외 발생
         async def mock_upload_with_error(product, update_existing=True):
@@ -173,12 +170,12 @@ class TestBaseUploader:
                 name="오류 상품",
                 price=20000,
                 cost=10000,
-                category="전자기기",
-                stock_quantity=50
+                category_name="전자기기",
+                stock=50
             )
         ]
         
-        results = await uploader.upload_batch(products)
+        results = asyncio.run(uploader.upload_batch(products))
         
         assert len(results) == 2
         assert results[0]["status"] == UploadStatus.SUCCESS
