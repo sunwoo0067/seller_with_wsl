@@ -147,6 +147,24 @@ class BaseOrderManager(ABC):
         """
         pass
     
+    async def collect_orders(
+        self,
+        start_date: Optional[datetime] = None,
+        hours_back: int = 24
+    ) -> int:
+        """
+        주문 수집 (process_new_orders의 간단한 래퍼)
+        
+        Args:
+            start_date: 시작일 (None이면 hours_back 사용)
+            hours_back: 조회할 과거 시간
+            
+        Returns:
+            수집된 주문 수
+        """
+        orders = await self.process_new_orders(start_date, hours_back)
+        return len(orders)
+    
     async def process_new_orders(
         self,
         start_date: Optional[datetime] = None,

@@ -408,6 +408,163 @@ class InventorySync:
                     f"({marketplace_name}, {product_id}): {str(e)}"
                 )
     
+    async def reserve_stock(self, product_id: str, quantity: int) -> bool:
+        """
+        재고 예약
+        
+        Args:
+            product_id: 상품 ID
+            quantity: 예약 수량
+            
+        Returns:
+            성공 여부
+        """
+        try:
+            # 현재 재고 확인
+            inventory = await self.storage.get(
+                "inventory",
+                filters={"product_id": product_id}
+            )
+            
+            if not inventory:
+                logger.error(f"재고 정보를 찾을 수 없습니다: {product_id}")
+                return False
+            
+            # 가용 재고 확인
+            available = inventory.get("available_stock", 0)
+            if available < quantity:
+                logger.error(
+                    f"재고 부족: {product_id} "
+                    f"(요청: {quantity}, 가용: {available})"
+                )
+                return False
+            
+            # 재고 예약
+            updates = {
+                "reserved_stock": inventory.get("reserved_stock", 0) + quantity,
+                "available_stock": available - quantity,
+                "updated_at": datetime.now()
+            }
+            
+            await self.storage.update("inventory", inventory["id"], updates)
+            
+            logger.info(
+                f"재고 예약 완료: {product_id} - {quantity}개 "
+                f"(남은 가용재고: {updates['available_stock']})"
+            )
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"재고 예약 오류: {str(e)}")
+            return False
+    
+    async def confirm_stock(self, product_id: str, quantity: int) -> bool:
+        """
+        재고 확정 (예약 재고를 실제로 차감)
+        
+        Args:
+            product_id: 상품 ID
+            quantity: 확정 수량
+            
+        Returns:
+            성공 여부
+        """
+        try:
+            # 현재 재고 확인
+            inventory = await self.storage.get(
+                "inventory",
+                filters={"product_id": product_id}
+            )
+            
+            if not inventory:
+                logger.error(f"재고 정보를 찾을 수 없습니다: {product_id}")
+                return False
+            
+            # 예약 재고 확인
+            reserved = inventory.get("reserved_stock", 0)
+            if reserved < quantity:
+                logger.warning(
+                    f"예약 재고 부족: {product_id} "
+                    f"(확정 요청: {quantity}, 예약: {reserved})"
+                )
+                return False
+            
+            # 재고 차감
+            supplier_stock = inventory.get("supplier_stock", 0)
+            marketplace_stock = inventory.get("marketplace_stock", 0)
+            
+            updates = {
+                "reserved_stock": reserved - quantity,
+                "supplier_stock": supplier_stock - quantity,
+                "marketplace_stock": marketplace_stock - quantity,
+                "updated_at": datetime.now()
+            }
+            
+            await self.storage.update("inventory", inventory["id"], updates)
+            
+            logger.info(
+                f"재고 확정 완료: {product_id} - {quantity}개 차감 "
+                f"(남은 재고: {updates['supplier_stock']})"
+            )
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"재고 확정 오류: {str(e)}")
+            return False
+    
+    async def release_stock(self, product_id: str, quantity: int) -> bool:
+        """
+        재고 예약 해제
+        
+        Args:
+            product_id: 상품 ID
+            quantity: 해제 수량
+            
+        Returns:
+            성공 여부
+        """
+        try:
+            # 현재 재고 확인
+            inventory = await self.storage.get(
+                "inventory",
+                filters={"product_id": product_id}
+            )
+            
+            if not inventory:
+                logger.error(f"재고 정보를 찾을 수 없습니다: {product_id}")
+                return False
+            
+            # 예약 재고 확인
+            reserved = inventory.get("reserved_stock", 0)
+            if reserved < quantity:
+                logger.warning(
+                    f"예약 재고 부족: {product_id} "
+                    f"(해제 요청: {quantity}, 예약: {reserved})"
+                )
+                quantity = reserved  # 최대한 해제
+            
+            # 재고 해제
+            updates = {
+                "reserved_stock": reserved - quantity,
+                "available_stock": inventory.get("available_stock", 0) + quantity,
+                "updated_at": datetime.now()
+            }
+            
+            await self.storage.update("inventory", inventory["id"], updates)
+            
+            logger.info(
+                f"재고 예약 해제: {product_id} - {quantity}개 "
+                f"(가용재고: {updates['available_stock']})"
+            )
+            
+            return True
+            
+        except Exception as e:
+            logger.error(f"재고 예약 해제 오류: {str(e)}")
+            return False
+    
     async def check_low_stock(self, threshold: int = 10) -> List[Dict[str, Any]]:
         """
         낮은 재고 상품 확인
