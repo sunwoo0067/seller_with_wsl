@@ -128,3 +128,33 @@ class BaseStorage(ABC):
             통계 정보
         """
         pass
+
+    @abstractmethod
+    def get_marketplace_upload(self, product_id: str, marketplace: str) -> Optional[Dict[str, Any]]:
+        """마켓플레이스 업로드 기록을 조회합니다."""
+        pass
+
+    @abstractmethod
+    def save_marketplace_upload(self, record: Dict[str, Any]):
+        """마켓플레이스 업로드 기록을 저장합니다."""
+        pass
+
+    @abstractmethod
+    def get_pricing_rules(self, active_only: bool = True) -> List[Dict[str, Any]]:
+        """가격 책정 규칙을 조회합니다."""
+        pass
+
+    @abstractmethod
+    def get_all_category_mappings(self) -> List[Dict[str, Any]]:
+        """모든 카테고리 매핑 정보를 조회합니다."""
+        pass
+
+    @abstractmethod
+    def get_supplier_code(self, supplier_id: str) -> str:
+        """공급사 ID로 코드를 조회합니다."""
+        pass
+
+    @abstractmethod
+    def get_marketplace_code(self, marketplace_id: str) -> str:
+        """마켓플레이스 ID로 코드를 조회합니다."""
+        pass

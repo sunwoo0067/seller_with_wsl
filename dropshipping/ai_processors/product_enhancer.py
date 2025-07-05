@@ -180,7 +180,7 @@ class ProductEnhancer(BaseAIProcessor):
     def _validate_enhanced_name(self, name: str) -> bool:
         """향상된 상품명 검증"""
         # 길이 체크
-        if len(name) < 10 or len(name) > 100:
+        if len(name) < 10 or len(name) > 60:
             return False
         
         # 금지 키워드 체크

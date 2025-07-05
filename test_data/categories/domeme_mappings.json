@@ -1,0 +1,82 @@
+[
+  {
+    "supplier_id": "domeme",
+    "supplier_category_code": "001",
+    "supplier_category_name": "패션의류",
+    "standard_category_code": "FASHION",
+    "confidence": 1.0,
+    "keywords": []
+  },
+  {
+    "supplier_id": "domeme",
+    "supplier_category_code": "002",
+    "supplier_category_name": "패션잡화",
+    "standard_category_code": "FASHION_ACC",
+    "confidence": 1.0,
+    "keywords": []
+  },
+  {
+    "supplier_id": "domeme",
+    "supplier_category_code": "003",
+    "supplier_category_name": "화장품/미용",
+    "standard_category_code": "BEAUTY",
+    "confidence": 1.0,
+    "keywords": []
+  },
+  {
+    "supplier_id": "domeme",
+    "supplier_category_code": "004",
+    "supplier_category_name": "디지털/가전",
+    "standard_category_code": "ELECTRONICS",
+    "confidence": 1.0,
+    "keywords": []
+  },
+  {
+    "supplier_id": "domeme",
+    "supplier_category_code": "005",
+    "supplier_category_name": "가구/인테리어",
+    "standard_category_code": "HOME",
+    "confidence": 1.0,
+    "keywords": []
+  },
+  {
+    "supplier_id": "domeme",
+    "supplier_category_code": "006",
+    "supplier_category_name": "식품",
+    "standard_category_code": "FOOD",
+    "confidence": 1.0,
+    "keywords": []
+  },
+  {
+    "supplier_id": "domeme",
+    "supplier_category_code": "007",
+    "supplier_category_name": "스포츠/레저",
+    "standard_category_code": "SPORTS",
+    "confidence": 1.0,
+    "keywords": []
+  },
+  {
+    "supplier_id": "domeme",
+    "supplier_category_code": "008",
+    "supplier_category_name": "생활용품",
+    "standard_category_code": "HOME",
+    "confidence": 0.8,
+    "keywords": []
+  },
+  {
+    "supplier_id": "domeme",
+    "supplier_category_code": "009",
+    "supplier_category_name": "출산/육아",
+    "standard_category_code": "BABY",
+    "confidence": 1.0,
+    "keywords": []
+  },
+  {
+    "supplier_id": "domeme",
+    "supplier_category_code": "010",
+    "supplier_category_name": "반려동물",
+    "standard_category_code": "PET",
+    "confidence": 1.0,
+    "keywords": []
+  }
+]

@@ -1,6 +1,4 @@
-"""
-상품 정보 향상 프로세서 테스트
-"""
+
 
 import pytest
 from unittest.mock import Mock, AsyncMock, patch
@@ -85,7 +83,7 @@ class TestProductEnhancer:
         name = "테스트★★★★상품!!!!!!"
         cleaned = enhancer._clean_product_name(name)
         assert "★★★★" not in cleaned
-        assert "!!!!!" not in cleaned
+        assert "!!!!" not in cleaned
         
         # 대괄호 내용 제거
         name = "[무료배송] 테스트 [특가] 상품 [당일발송]"
@@ -109,7 +107,7 @@ class TestProductEnhancer:
         assert enhancer._validate_enhanced_name("테스트") is False
         
         # 너무 김
-        assert enhancer._validate_enhanced_name("a" * 101) is False
+        assert enhancer._validate_enhanced_name("a" * 61) is False
         
         # 금지 키워드
         assert enhancer._validate_enhanced_name("최고의 테스트 상품") is False
@@ -242,3 +240,38 @@ class TestProductEnhancer:
             
             assert result["product_id"] == "test-1"
             assert result["original_name"] == "테스트 상품"
+
+    @pytest.mark.asyncio
+    async def test_generate_description(self, enhancer, sample_product):
+        """설명 생성 테스트"""
+        with patch.object(enhancer, '_execute_with_model') as mock_execute:
+            mock_execute.return_value = {
+                "content": "<p>이것은 생성된 설명입니다.</p>",
+                "usage": {"total_tokens": 300}
+            }
+            
+            result = await enhancer._generate_description(
+                sample_product,
+                TaskConfig(task_type=TaskType.DESCRIPTION_GENERATE)
+            )
+            
+            assert "<p>이것은 생성된 설명입니다.</p>" in result
+            assert mock_execute.called
+
+    @pytest.mark.asyncio
+    async def test_extract_seo_keywords(self, enhancer, sample_product):
+        """SEO 키워드 추출 테스트"""
+        with patch.object(enhancer, '_execute_with_model') as mock_execute:
+            mock_execute.return_value = {
+                "content": "[\"키워드1\", \"키워드2\"]",
+                "usage": {"total_tokens": 50}
+            }
+            
+            result = await enhancer._extract_seo_keywords(
+                sample_product,
+                TaskConfig(task_type=TaskType.SEO_KEYWORDS)
+            )
+            
+            assert "키워드1" in result
+            assert "키워드2" in result
+            assert mock_execute.called

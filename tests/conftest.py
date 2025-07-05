@@ -53,14 +53,21 @@ def mock_settings(test_env):
 
 
 @pytest.fixture
-def mock_http_client():
-    """Mock HTTP 클라이언트"""
-    client = Mock()
-    client.get = Mock()
-    client.post = Mock()
-    client.put = Mock()
-    client.delete = Mock()
-    return client
+def mock_requests(monkeypatch):
+    """requests 라이브러리 Mock"""
+    mock_response = Mock()
+    mock_response.raise_for_status = Mock()
+    mock_response.json.return_value = {
+        "resultCode": "00",
+        "message": "성공",
+        "product": [],
+        "totalCount": 0,
+    }
+
+    mock_get = Mock(return_value=mock_response)
+    monkeypatch.setattr("requests.get", mock_get)
+    
+    return mock_get
 
 
 @pytest.fixture

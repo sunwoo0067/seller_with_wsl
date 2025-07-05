@@ -11,6 +11,9 @@ from enum import Enum
 from loguru import logger
 
 
+from dropshipping.storage.base import BaseStorage
+
+
 class PricingMethod(Enum):
     """가격 책정 방식"""
 
@@ -50,6 +53,33 @@ class PricingRule:
     round_to: int = 100  # 반올림 단위
     price_ending: Optional[int] = None  # 가격 끝자리 (예: 900)
 
+    @classmethod
+    def from_db_record(cls, record: Dict[str, Any]) -> "PricingRule":
+        """DB 레코드로부터 PricingRule 객체 생성"""
+        conditions = record.get("conditions", {})
+        pricing_params = record.get("pricing_params", {})
+        additional_costs = record.get("additional_costs", {})
+
+        return cls(
+            name=record["name"],
+            method=PricingMethod(record["pricing_method"]),
+            priority=record.get("priority", 0),
+            min_cost=Decimal(str(conditions["min_cost"])) if "min_cost" in conditions else None,
+            max_cost=Decimal(str(conditions["max_cost"])) if "max_cost" in conditions else None,
+            category_codes=conditions.get("category_codes"),
+            supplier_ids=conditions.get("supplier_ids"),
+            margin_rate=Decimal(str(pricing_params["margin_rate"])) if "margin_rate" in pricing_params else None,
+            fixed_margin=Decimal(str(pricing_params["fixed_margin"])) if "fixed_margin" in pricing_params else None,
+            min_margin_amount=Decimal(str(pricing_params["min_margin_amount"])) if "min_margin_amount" in pricing_params else None,
+            max_margin_amount=Decimal(str(pricing_params["max_margin_amount"])) if "max_margin_amount" in pricing_params else None,
+            platform_fee_rate=Decimal(str(additional_costs.get("platform_fee_rate", "0.1"))),
+            payment_fee_rate=Decimal(str(additional_costs.get("payment_fee_rate", "0.03"))),
+            packaging_cost=Decimal(str(additional_costs.get("packaging_cost", "1000"))),
+            handling_cost=Decimal(str(additional_costs.get("handling_cost", "500"))),
+            round_to=record.get("round_to", 100),
+            price_ending=record.get("price_ending"),
+        )
+
     def matches(self, product: Dict[str, Any]) -> bool:
         """규칙이 상품에 적용되는지 확인"""
         cost = Decimal(str(product.get("cost", 0)))
@@ -78,9 +108,25 @@ class PricingRule:
 class PricingCalculator:
     """가격 계산기"""
 
-    def __init__(self):
+    def __init__(self, storage: Optional[BaseStorage] = None):
+        self.storage = storage
         self.rules: List[PricingRule] = []
-        self._setup_default_rules()
+        
+        if self.storage:
+            self.load_rules_from_db()
+        else:
+            self._setup_default_rules()
+
+    def load_rules_from_db(self):
+        """DB에서 가격 책정 규칙 로드"""
+        if not self.storage:
+            logger.warning("Storage가 설정되지 않아 DB에서 가격 규칙을 로드할 수 없습니다.")
+            return
+
+        rule_records = self.storage.get_pricing_rules(active_only=True)
+        self.rules = [PricingRule.from_db_record(rec) for rec in rule_records]
+        self.rules.sort(key=lambda r: r.priority, reverse=True)
+        logger.info(f"DB에서 {len(self.rules)}개의 가격 규칙을 로드했습니다.")
 
     def _setup_default_rules(self):
         """기본 가격 규칙 설정"""

@@ -20,46 +20,19 @@ class TransformError(Exception):
     pass
 
 
-class BaseTransformer(ABC, Generic[T]):
-    """
-    기본 변환기 추상 클래스
-    원본 데이터를 StandardProduct로 변환하거나 그 반대로 변환
-    """
-
-    def __init__(self, supplier_id: str):
-        self.supplier_id = supplier_id
-        self._errors: List[Dict[str, Any]] = []
+class BaseTransformer(ABC):
+    """데이터 변환기 기본 클래스"""
 
     @abstractmethod
-    def to_standard(self, raw_data: T) -> StandardProduct:
+    def to_standard(self, data: Dict[str, Any]) -> Optional[StandardProduct]:
         """
-        원본 데이터를 표준 형식으로 변환
+        공급사 데이터를 표준 상품 모델로 변환
 
         Args:
-            raw_data: 공급사별 원본 데이터
+            data: 공급사의 원본 상품 데이터
 
         Returns:
-            StandardProduct: 표준화된 상품 데이터
-
-        Raises:
-            TransformError: 변환 실패시
-        """
-        pass
-
-    @abstractmethod
-    def from_standard(self, product: StandardProduct) -> T:
-        """
-        표준 형식을 원본 데이터 형식으로 변환
-        (마켓플레이스 업로드용)
-
-        Args:
-            product: 표준 상품 데이터
-
-        Returns:
-            원본 형식의 데이터
-
-        Raises:
-            TransformError: 변환 실패시
+            StandardProduct 인스턴스 또는 None
         """
         pass
 
@@ -174,7 +147,8 @@ class BaseTransformer(ABC, Generic[T]):
         self._errors.clear()
 
 
-class DictTransformer(BaseTransformer[Dict[str, Any]]):
+class DictTransformer(BaseTransformer):
+    """딕셔너리 기반 데이터 변환기"""
     """
     딕셔너리 형태의 원본 데이터를 다루는 변환기
     대부분의 JSON/XML API 응답에 사용

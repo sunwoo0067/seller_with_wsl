@@ -8,6 +8,7 @@ from typing import Dict, Any, List, Optional, Tuple
 
 from dropshipping.suppliers.base.base_fetcher import BaseFetcher
 from dropshipping.tests.fixtures.mock_data import MockDataGenerator
+from dropshipping.models.product import ProductStatus
 
 
 class MockFetcher(BaseFetcher):
@@ -40,7 +41,7 @@ class MockFetcher(BaseFetcher):
                 "salePrice": str(product.price),
                 "consumerPrice": str(product.list_price),
                 "stockQty": str(product.stock),
-                "productStatus": "Y" if product.status.value == "active" else "N",
+                "productStatus": "Y" if product.status == ProductStatus.ACTIVE else "N",
                 "category1": product.category_code,
                 "categoryNm1": product.category_name,
                 "mainImg": str(product.main_image.url) if product.main_image else "",

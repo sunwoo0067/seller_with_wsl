@@ -16,7 +16,8 @@ class ProductStatus(str, Enum):
 
     ACTIVE = "active"  # 판매중
     INACTIVE = "inactive"  # 판매중지
-    SOLDOUT = "soldout"  # 품절
+    OUT_OF_STOCK = "out_of_stock"  # 품절
+    DISCONTINUED = "discontinued"  # 단종
     PENDING = "pending"  # 검토중
     ERROR = "error"  # 오류
 

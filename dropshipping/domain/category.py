@@ -12,6 +12,9 @@ from difflib import SequenceMatcher
 from loguru import logger
 
 
+from dropshipping.storage.base import BaseStorage
+
+
 @dataclass
 class CategoryMapping:
     """카테고리 매핑 정보"""
@@ -27,15 +30,50 @@ class CategoryMapping:
 class CategoryMapper:
     """카테고리 매핑 관리자"""
 
-    def __init__(self, mapping_file: Optional[str] = None):
+    def __init__(self, storage: Optional[BaseStorage] = None, mapping_file: Optional[str] = None):
+        self.storage = storage
         self.mappings: Dict[str, Dict[str, List[CategoryMapping]]] = {}
         self.category_keywords: Dict[str, List[str]] = {}
 
-        # 매핑 파일 로드
-        if mapping_file and Path(mapping_file).exists():
+        if self.storage:
+            self.load_mappings_from_db()
+        elif mapping_file and Path(mapping_file).exists():
             self.load_mappings(mapping_file)
         else:
             self._setup_default_mappings()
+
+    def load_mappings_from_db(self):
+        """DB에서 카테고리 매핑 정보 로드"""
+        if not self.storage:
+            logger.warning("Storage가 설정되지 않아 DB에서 매핑을 로드할 수 없습니다.")
+            return
+
+        # 모든 공급사와 마켓플레이스에 대한 매핑을 가져옴
+        # 실제 구현에서는 필요한 만큼만 가져오도록 최적화 가능
+        all_mappings = self.storage.get_all_category_mappings() # 이 메서드는 storage에 추가 필요
+        
+        for mapping_data in all_mappings:
+            mapping = CategoryMapping(
+                supplier_code=mapping_data['supplier_category_code'],
+                supplier_name=mapping_data['supplier_category_name'],
+                marketplace=self._get_marketplace_code(mapping_data['marketplace_id']), # ID -> code 변환 필요
+                marketplace_code=mapping_data['marketplace_category_code'],
+                marketplace_name=mapping_data['marketplace_category_name'],
+                confidence=float(mapping_data.get('confidence', 1.0))
+            )
+            supplier_code = self._get_supplier_code(mapping_data['supplier_id']) # ID -> code 변환 필요
+            self.add_mapping(mapping, supplier_id=supplier_code)
+        
+        logger.info(f"DB에서 {len(all_mappings)}개의 카테고리 매핑을 로드했습니다.")
+
+    # ID-code 변환을 위한 헬퍼 메서드 (실제로는 storage나 별도 캐시에서 관리)
+    def _get_marketplace_code(self, marketplace_id: str) -> str:
+        # 임시 구현
+        return "coupang"
+
+    def _get_supplier_code(self, supplier_id: str) -> str:
+        # 임시 구현
+        return "domeme"
 
     def _setup_default_mappings(self):
         """기본 카테고리 매핑 설정"""
@@ -94,7 +132,7 @@ class CategoryMapper:
             "kids": ["유아", "아동", "키즈", "장난감", "육아"],
         }
 
-    def add_mapping(self, mapping: CategoryMapping):
+    def add_mapping(self, mapping: CategoryMapping, supplier_id: Optional[str] = None):
         """카테고리 매핑 추가"""
         supplier_id = "domeme"  # TODO: 공급사별로 구분 필요
 

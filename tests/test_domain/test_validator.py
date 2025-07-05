@@ -160,7 +160,7 @@ class TestProductValidator:
 
         # 재고 있는데 품절 상태
         valid_product.stock = 100
-        valid_product.status = ProductStatus.SOLDOUT
+        valid_product.status = ProductStatus.OUT_OF_STOCK
 
         result = validator.validate_product(valid_product)
 

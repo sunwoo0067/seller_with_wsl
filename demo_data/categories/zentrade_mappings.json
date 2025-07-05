@@ -1,0 +1,34 @@
+[
+  {
+    "supplier_id": "zentrade",
+    "supplier_category_code": "Fashion",
+    "supplier_category_name": "패션",
+    "standard_category_code": "FASHION",
+    "confidence": 1.0,
+    "keywords": []
+  },
+  {
+    "supplier_id": "zentrade",
+    "supplier_category_code": "Beauty",
+    "supplier_category_name": "뷰티",
+    "standard_category_code": "BEAUTY",
+    "confidence": 1.0,
+    "keywords": []
+  },
+  {
+    "supplier_id": "zentrade",
+    "supplier_category_code": "Electronics",
+    "supplier_category_name": "전자제품",
+    "standard_category_code": "ELECTRONICS",
+    "confidence": 1.0,
+    "keywords": []
+  },
+  {
+    "supplier_id": "zentrade",
+    "supplier_category_code": "Home",
+    "supplier_category_name": "홈인테리어",
+    "standard_category_code": "HOME",
+    "confidence": 1.0,
+    "keywords": []
+  }
+]

@@ -138,8 +138,11 @@ class TestImageProcessor:
         assert path.suffix == ".webp"
     
     @pytest.mark.asyncio
-    async def test_generate_caption(self, processor, test_image):
+    @patch('dropshipping.ai_processors.image_processor.ImageProcessor._execute_with_model')
+    async def test_generate_caption(self, mock_execute_with_model, processor, test_image):
         """캡션 생성 테스트"""
+        mock_execute_with_model.return_value = {"content": "Mocked image caption", "usage": {"total_tokens": 50}}
+
         config = TaskConfig(
             task_type=TaskType.IMAGE_CAPTION,
             requires_vision=True
@@ -147,11 +150,19 @@ class TestImageProcessor:
         
         caption = await processor._generate_caption(test_image, config)
         assert isinstance(caption, str)
-        assert len(caption) > 0
+        assert caption == "Mocked image caption"
+        mock_execute_with_model.assert_called_once()
     
     @pytest.mark.asyncio
-    async def test_remove_background(self, processor, test_image):
+    @patch('dropshipping.ai_processors.image_processor.ImageProcessor._execute_with_model')
+    async def test_remove_background(self, mock_execute_with_model, processor, test_image):
         """배경 제거 테스트"""
+        # Mocked PIL Image 반환
+        mock_execute_with_model.return_value = {
+            "image_data": base64.b64encode(io.BytesIO(Image.new('RGBA', (100, 100), color='green').tobytes()).getvalue()).decode(),
+            "usage": {"total_tokens": 100}
+        }
+
         config = TaskConfig(
             task_type=TaskType.BACKGROUND_REMOVE,
             requires_vision=True
@@ -160,6 +171,7 @@ class TestImageProcessor:
         result = await processor._remove_background(test_image, config)
         assert result is not None
         assert result.mode == 'RGBA'
+        mock_execute_with_model.assert_called_once()
     
     @pytest.mark.asyncio
     async def test_process_all(self, processor, test_image_path):

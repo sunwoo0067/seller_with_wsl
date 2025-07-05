@@ -1,0 +1,366 @@
+[
+  {
+    "code": "FASHION",
+    "name": "패션의류",
+    "level": 1,
+    "parent_code": null,
+    "children": [
+      "FASHION_WOMEN",
+      "FASHION_MEN",
+      "FASHION_SHOES",
+      "FASHION_BAGS",
+      "FASHION_ACC"
+    ],
+    "keywords": [
+      "의류",
+      "패션",
+      "옷",
+      "의상",
+      "블라우스",
+      "셔츠",
+      "바지",
+      "스커트",
+      "드레스",
+      "코트",
+      "자켓"
+    ],
+    "marketplace_mappings": {
+      "smartstore": "50000000",
+      "coupang": "11",
+      "gmarket": "100000001"
+    }
+  },
+  {
+    "code": "BEAUTY",
+    "name": "뷰티",
+    "level": 1,
+    "parent_code": null,
+    "children": [
+      "BEAUTY_SKINCARE",
+      "BEAUTY_MAKEUP",
+      "BEAUTY_HAIR",
+      "BEAUTY_BODY"
+    ],
+    "keywords": [
+      "화장품",
+      "미용",
+      "스킨케어",
+      "메이크업",
+      "크림",
+      "로션",
+      "에센스",
+      "마스크",
+      "클렌징"
+    ],
+    "marketplace_mappings": {
+      "smartstore": "50000001",
+      "coupang": "12",
+      "gmarket": "100000002"
+    }
+  },
+  {
+    "code": "ELECTRONICS",
+    "name": "전자제품",
+    "level": 1,
+    "parent_code": null,
+    "children": [],
+    "keywords": [
+      "전자",
+      "디지털",
+      "가전",
+      "IT",
+      "스마트폰",
+      "갤럭시",
+      "아이폰",
+      "노트북",
+      "컴퓨터"
+    ],
+    "marketplace_mappings": {
+      "smartstore": "50000002",
+      "coupang": "13",
+      "gmarket": "100000003"
+    }
+  },
+  {
+    "code": "HOME",
+    "name": "홈인테리어",
+    "level": 1,
+    "parent_code": null,
+    "children": [],
+    "keywords": [
+      "가구",
+      "인테리어",
+      "홈데코",
+      "생활용품",
+      "침대",
+      "소파",
+      "테이블",
+      "의자",
+      "수납"
+    ],
+    "marketplace_mappings": {
+      "smartstore": "50000003",
+      "coupang": "14",
+      "gmarket": "100000004"
+    }
+  },
+  {
+    "code": "SPORTS",
+    "name": "스포츠/레저",
+    "level": 1,
+    "parent_code": null,
+    "children": [],
+    "keywords": [
+      "운동",
+      "스포츠",
+      "레저",
+      "아웃도어",
+      "운동화",
+      "나이키",
+      "아디다스",
+      "헬스",
+      "요가"
+    ],
+    "marketplace_mappings": {
+      "smartstore": "50000004",
+      "coupang": "15",
+      "gmarket": "100000005"
+    }
+  },
+  {
+    "code": "FOOD",
+    "name": "식품",
+    "level": 1,
+    "parent_code": null,
+    "children": [],
+    "keywords": [
+      "음식",
+      "식료품",
+      "건강식품",
+      "간식",
+      "차",
+      "커피",
+      "과자",
+      "음료",
+      "건강"
+    ],
+    "marketplace_mappings": {
+      "smartstore": "50000005",
+      "coupang": "16",
+      "gmarket": "100000006"
+    }
+  },
+  {
+    "code": "BABY",
+    "name": "출산/육아",
+    "level": 1,
+    "parent_code": null,
+    "children": [],
+    "keywords": [
+      "유아",
+      "아기",
+      "육아용품",
+      "출산용품",
+      "기저귀",
+      "분유",
+      "젖병",
+      "유모차",
+      "카시트"
+    ],
+    "marketplace_mappings": {
+      "smartstore": "50000006",
+      "coupang": "17",
+      "gmarket": "100000007"
+    }
+  },
+  {
+    "code": "PET",
+    "name": "반려동물",
+    "level": 1,
+    "parent_code": null,
+    "children": [],
+    "keywords": [
+      "펫",
+      "동물",
+      "강아지",
+      "고양이",
+      "사료",
+      "간식",
+      "용품",
+      "장난감"
+    ],
+    "marketplace_mappings": {
+      "smartstore": "50000007",
+      "coupang": "18",
+      "gmarket": "100000008"
+    }
+  },
+  {
+    "code": "BOOK",
+    "name": "도서",
+    "level": 1,
+    "parent_code": null,
+    "children": [],
+    "keywords": [
+      "책",
+      "서적",
+      "교육",
+      "학습",
+      "소설",
+      "만화",
+      "참고서",
+      "잡지"
+    ],
+    "marketplace_mappings": {
+      "smartstore": "50000008",
+      "coupang": "19",
+      "gmarket": "100000009"
+    }
+  },
+  {
+    "code": "HOBBY",
+    "name": "취미/문구",
+    "level": 1,
+    "parent_code": null,
+    "children": [],
+    "keywords": [
+      "취미",
+      "문구",
+      "DIY",
+      "수집",
+      "펜",
+      "노트",
+      "스티커",
+      "만들기"
+    ],
+    "marketplace_mappings": {
+      "smartstore": "50000009",
+      "coupang": "20",
+      "gmarket": "100000010"
+    }
+  },
+  {
+    "code": "FASHION_WOMEN",
+    "name": "여성의류",
+    "level": 2,
+    "parent_code": "FASHION",
+    "children": [],
+    "keywords": [
+      "여성",
+      "레이디스",
+      "우먼"
+    ],
+    "marketplace_mappings": {}
+  },
+  {
+    "code": "FASHION_MEN",
+    "name": "남성의류",
+    "level": 2,
+    "parent_code": "FASHION",
+    "children": [],
+    "keywords": [
+      "남성",
+      "맨즈",
+      "남자"
+    ],
+    "marketplace_mappings": {}
+  },
+  {
+    "code": "FASHION_SHOES",
+    "name": "신발",
+    "level": 2,
+    "parent_code": "FASHION",
+    "children": [],
+    "keywords": [
+      "신발",
+      "슈즈",
+      "구두",
+      "운동화"
+    ],
+    "marketplace_mappings": {}
+  },
+  {
+    "code": "FASHION_BAGS",
+    "name": "가방",
+    "level": 2,
+    "parent_code": "FASHION",
+    "children": [],
+    "keywords": [
+      "가방",
+      "백",
+      "핸드백",
+      "숄더백"
+    ],
+    "marketplace_mappings": {}
+  },
+  {
+    "code": "FASHION_ACC",
+    "name": "액세서리",
+    "level": 2,
+    "parent_code": "FASHION",
+    "children": [],
+    "keywords": [
+      "액세서리",
+      "쥬얼리",
+      "시계",
+      "모자"
+    ],
+    "marketplace_mappings": {}
+  },
+  {
+    "code": "BEAUTY_SKINCARE",
+    "name": "스킨케어",
+    "level": 2,
+    "parent_code": "BEAUTY",
+    "children": [],
+    "keywords": [
+      "스킨케어",
+      "기초화장품",
+      "토너",
+      "에센스"
+    ],
+    "marketplace_mappings": {}
+  },
+  {
+    "code": "BEAUTY_MAKEUP",
+    "name": "메이크업",
+    "level": 2,
+    "parent_code": "BEAUTY",
+    "children": [],
+    "keywords": [
+      "메이크업",
+      "색조화장품",
+      "립스틱",
+      "파운데이션"
+    ],
+    "marketplace_mappings": {}
+  },
+  {
+    "code": "BEAUTY_HAIR",
+    "name": "헤어케어",
+    "level": 2,
+    "parent_code": "BEAUTY",
+    "children": [],
+    "keywords": [
+      "헤어",
+      "샴푸",
+      "린스",
+      "헤어팩"
+    ],
+    "marketplace_mappings": {}
+  },
+  {
+    "code": "BEAUTY_BODY",
+    "name": "바디케어",
+    "level": 2,
+    "parent_code": "BEAUTY",
+    "children": [],
+    "keywords": [
+      "바디",
+      "로션",
+      "크림",
+      "바디워시"
+    ],
+    "marketplace_mappings": {}
+  }
+]

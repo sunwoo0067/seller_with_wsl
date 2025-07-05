@@ -44,6 +44,9 @@ class SupabaseStorage(BaseStorage):
                 persist_session=False,
             ),
         )
+        
+        self.supplier_id_cache = {}
+        self.marketplace_id_cache = {}
 
         logger.info(f"Supabase 저장소 초기화: {self.url}")
 
@@ -293,24 +296,54 @@ class SupabaseStorage(BaseStorage):
             logger.error(f"통계 조회 실패: {str(e)}")
             return {}
 
-    # === 헬퍼 메서드 ===
+    def _init_id_caches(self):
+        """공급사 및 마켓플레이스 ID 캐시 초기화"""
+        try:
+            suppliers = self.client.table("suppliers").select("id, code").execute()
+            for s in suppliers.data:
+                self.supplier_id_cache[s['id']] = s['code']
+                self.supplier_id_cache[s['code']] = s['id']
+
+            marketplaces = self.client.table("marketplaces").select("id, code").execute()
+            for m in marketplaces.data:
+                self.marketplace_id_cache[m['id']] = m['code']
+                self.marketplace_id_cache[m['code']] = m['id']
+            logger.info("ID 캐시 초기화 완료")
+        except Exception as e:
+            logger.error(f"ID 캐시 초기화 실패: {e}")
 
     def _get_supplier_id(self, supplier_code: str) -> Optional[str]:
-        """공급사 코드로 UUID 조회"""
+        """공급사 코드로 UUID 조회 (캐시 활용)"""
+        if not self.supplier_id_cache:
+            self._init_id_caches()
+        return self.supplier_id_cache.get(supplier_code)
+
+    def _get_supplier_code(self, supplier_id: str) -> str:
+        """공급사 UUID로 코드 조회 (캐시 활용)"""
+        if not self.supplier_id_cache:
+            self._init_id_caches()
+        return self.supplier_id_cache.get(supplier_id, supplier_id)
+
+    def _get_marketplace_id(self, marketplace_code: str) -> Optional[str]:
+        """마켓플레이스 코드로 UUID 조회 (캐시 활용)"""
+        if not self.marketplace_id_cache:
+            self._init_id_caches()
+        return self.marketplace_id_cache.get(marketplace_code)
+
+    def _get_marketplace_code(self, marketplace_id: str) -> str:
+        """마켓플레이스 UUID로 코드 조회 (캐시 활용)"""
+        if not self.marketplace_id_cache:
+            self._init_id_caches()
+        return self.marketplace_id_cache.get(marketplace_id, marketplace_id)
+
+    def get_all_category_mappings(self) -> List[Dict[str, Any]]:
+        """모든 카테고리 매핑 정보 조회"""
         try:
-            result = (
-                self.client.table("suppliers")
-                .select("id")
-                .eq("code", supplier_code)
-                .single()
-                .execute()
-            )
-
-            return result.data["id"] if result.data else None
-
+            result = self.client.table("category_mappings").select("*").execute()
+            return result.data
         except Exception as e:
-            logger.error(f"공급사 ID 조회 실패: {str(e)}")
-            return None
+            logger.error(f"전체 카테고리 매핑 조회 실패: {str(e)}")
+            return []
 
     def _serialize_images(self, images: List[ProductImage]) -> List[Dict[str, Any]]:
         """이미지 객체를 JSON으로 변환"""
@@ -350,22 +383,6 @@ class SupabaseStorage(BaseStorage):
             "fetched_at": record["fetched_at"],
             "created_at": record["created_at"],
         }
-
-    def _get_supplier_code(self, supplier_id: str) -> str:
-        """공급사 UUID로 코드 조회"""
-        try:
-            result = (
-                self.client.table("suppliers")
-                .select("code")
-                .eq("id", supplier_id)
-                .single()
-                .execute()
-            )
-
-            return result.data["code"] if result.data else supplier_id
-
-        except Exception:
-            return supplier_id
 
     def _deserialize_product(self, record: Dict[str, Any]) -> StandardProduct:
         """데이터베이스 레코드를 StandardProduct로 변환"""
@@ -470,23 +487,6 @@ class SupabaseStorage(BaseStorage):
         except Exception as e:
             logger.error(f"카테고리 매핑 조회 실패: {str(e)}")
             return []
-
-    def _get_marketplace_id(self, marketplace_code: str) -> Optional[str]:
-        """마켓플레이스 코드로 UUID 조회"""
-        try:
-            result = (
-                self.client.table("marketplaces")
-                .select("id")
-                .eq("code", marketplace_code)
-                .single()
-                .execute()
-            )
-
-            return result.data["id"] if result.data else None
-
-        except Exception as e:
-            logger.error(f"마켓플레이스 ID 조회 실패: {str(e)}")
-            return None
 
     def log_pipeline(
         self,

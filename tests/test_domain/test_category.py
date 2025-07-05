@@ -3,11 +3,67 @@
 """
 
 import pytest
+from unittest.mock import MagicMock, patch
 import json
 import tempfile
 from pathlib import Path
 
 from dropshipping.domain.category import CategoryMapper, CategoryMapping
+
+
+from dropshipping.storage.base import BaseStorage
+
+
+class TestCategoryMapperWithDB:
+    """DB 연동 카테고리 매퍼 테스트"""
+
+    @pytest.fixture
+    def mock_storage(self):
+        """DB Storage의 Mock 객체"""
+        storage = MagicMock(spec=BaseStorage)
+        
+        # get_all_category_mappings의 Mock 반환값 설정
+        storage.get_all_category_mappings.return_value = [
+            {
+                "supplier_id": "uuid-domeme",
+                "marketplace_id": "uuid-coupang",
+                "supplier_category_code": "DB001",
+                "supplier_category_name": "DB패션",
+                "marketplace_category_code": "DB194176",
+                "marketplace_category_name": "DB여성패션",
+                "confidence": 1.0
+            }
+        ]
+        
+        # ID-code 변환 Mock 설정
+        storage.get_supplier_code.return_value = "domeme"
+        storage.get_marketplace_code.return_value = "coupang"
+        
+        return storage
+
+    def test_mapper_loads_from_db(self, mock_storage):
+        """DB에서 매핑 정보를 성공적으로 로드하는지 테스트"""
+        # CategoryMapper 초기화 시 storage 전달
+        with patch.object(CategoryMapper, '_get_supplier_code', return_value='domeme'), \
+             patch.object(CategoryMapper, '_get_marketplace_code', return_value='coupang'):
+            mapper = CategoryMapper(storage=mock_storage)
+
+            # DB에서 로드되었는지 확인
+            assert len(mapper.mappings) > 0
+            assert "domeme" in mapper.mappings
+            assert "DB001" in mapper.mappings["domeme"]
+            
+            # get_marketplace_category가 DB 기반으로 동작하는지 확인
+            result = mapper.get_marketplace_category(
+                supplier_id="domeme",
+                supplier_category_code="DB001",
+                supplier_category_name="DB패션",
+                marketplace="coupang"
+            )
+            
+            assert result is not None
+            assert result[0] == "DB194176"
+            assert result[1] == "DB여성패션"
 
 
 class TestCategoryMapper:

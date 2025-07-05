@@ -1,0 +1,10 @@
+[
+  {
+    "supplier_id": "unknown",
+    "supplier_category_code": "999",
+    "supplier_category_name": "여성 블라우스",
+    "standard_category_code": "FASHION",
+    "confidence": 0.7,
+    "keywords": []
+  }
+]

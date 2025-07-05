@@ -323,7 +323,7 @@ class ProductValidator:
                 "재고가 없는데 상태가 활성입니다. 상태를 SOLDOUT으로 변경하는 것을 권장합니다",
             )
 
-        if product.stock and product.stock > 0 and product.status == ProductStatus.SOLDOUT:
+        if product.stock and product.stock > 0 and product.status == ProductStatus.OUT_OF_STOCK:
             result.add_warning(
                 "status",
                 "재고가 있는데 상태가 품절입니다. 상태를 ACTIVE로 변경하는 것을 권장합니다",
