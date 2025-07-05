@@ -11,8 +11,8 @@ from pydantic import Field, field_validator, ConfigDict
 from pydantic_settings import BaseSettings
 from dotenv import load_dotenv
 
-# .env 파일 로드
-load_dotenv()
+# .env 파일 로드 (명시적 경로 및 오버라이드)
+load_dotenv(dotenv_path=".env", override=True)
 
 
 class SupabaseConfig(BaseSettings):

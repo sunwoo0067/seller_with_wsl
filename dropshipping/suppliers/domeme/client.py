@@ -21,13 +21,26 @@ class DomemeClient:
         self.api_key = api_key or (settings.domeme.api_key if settings.domeme else None)
         if not self.api_key:
             raise ValueError("도매매 API 키가 필요합니다.")
-        self.base_url = "https://api.domeggook.com/open/v4.1"
+        self.base_url = "https://openapi.domeggook.com"
+
+    def check_connection(self) -> bool:
+        """API 연결 상태 확인"""
+        try:
+            # 간단한 상품 목록 조회를 시도하여 연결 확인
+            self.search_products(start_row=1, end_row=1)
+            return True
+        except DomemeAPIError as e:
+            logger.error(f"도매매 API 연결 실패: {str(e)}")
+            return False
+        except Exception as e:
+            logger.error(f"예기치 않은 오류로 도매매 API 연결 실패: {str(e)}")
+            return False
 
     def _request(self, endpoint: str, params: Dict[str, Any]) -> Dict[str, Any]:
         """API 요청 공통 메서드"""
         url = f"{self.base_url}/{endpoint}"
         headers = {"Content-Type": "application/json"}
-        params["apiKey"] = self.api_key
+        params["aid"] = self.api_key
 
         try:
             response = requests.get(url, params=params, headers=headers, timeout=10)
@@ -49,7 +62,7 @@ class DomemeClient:
 
     def search_products(self, **kwargs) -> Dict[str, Any]:
         """상품 목록 검색"""
-        endpoint = "search/searchProductList.do"
+        endpoint = "api/rest/product/searchProductList"
         
         # API 파라미터 준비
         params = {
@@ -58,6 +71,7 @@ class DomemeClient:
             "endRow": kwargs.get("end_row", 100),
             "orderBy": kwargs.get("order_by", "modDate"),
             "sortType": kwargs.get("sort_type", "desc"),
+            "ver": "4.1",
         }
         if "categoryCode" in kwargs:
             params["categoryCode"] = kwargs["categoryCode"]
@@ -73,8 +87,8 @@ class DomemeClient:
 
     def get_product_detail(self, product_id: str) -> Dict[str, Any]:
         """상품 상세 정보 조회"""
-        endpoint = "search/searchProductInfo.do"
-        params = {"productNo": product_id}
+        endpoint = "api/rest/product/searchProductInfo"
+        params = {"productNo": product_id, "ver": "4.5", "market": "supply"}
         
         data = self._request(endpoint, params)
         

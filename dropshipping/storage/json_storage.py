@@ -288,3 +288,63 @@ class JSONStorage(BaseStorage):
             self._processed_data.clear()
             self._index = {"hash_index": {}, "supplier_index": {}, "stats": {}}
             self._save_data()
+
+    # BaseStorage 추상 메서드 구현
+    async def upsert(self, table_name: str, records: List[Dict[str, Any]], on_conflict: str) -> List[Dict[str, Any]]:
+        """레코드를 삽입하거나 업데이트합니다."""
+        # JSONStorage는 upsert를 직접 지원하지 않으므로 NotImplementedError 발생
+        raise NotImplementedError("JSONStorage does not support upsert operation directly.")
+
+    def get_marketplace_upload(self, product_id: str, marketplace: str) -> Optional[Dict[str, Any]]:
+        """마켓플레이스 업로드 기록을 조회합니다."""
+        # JSONStorage는 마켓플레이스 업로드 기록을 별도로 저장하지 않으므로 NotImplementedError 발생
+        raise NotImplementedError("JSONStorage does not store marketplace upload records.")
+
+    def save_marketplace_upload(self, record: Dict[str, Any]):
+        """마켓플레이스 업로드 기록을 저장합니다."""
+        # JSONStorage는 마켓플레이스 업로드 기록을 별도로 저장하지 않으므로 NotImplementedError 발생
+        raise NotImplementedError("JSONStorage does not store marketplace upload records.")
+
+    def get_pricing_rules(self, active_only: bool = True) -> List[Dict[str, Any]]:
+        """가격 책정 규칙을 조회합니다."""
+        pricing_rules_path = Path(__file__).parent.parent.parent / "demo_data" / "pricing" / "pricing_rules.json"
+        if pricing_rules_path.exists():
+            with open(pricing_rules_path, "r", encoding="utf-8") as f:
+                rules = json.load(f)
+                if active_only:
+                    return [rule for rule in rules if rule.get("is_active", True)]
+                return rules
+        return []
+
+    def get_all_category_mappings(self) -> List[Dict[str, Any]]:
+        """모든 카테고리 매핑 정보를 조회합니다."""
+        mappings = []
+        categories_path = Path(__file__).parent.parent.parent / "demo_data" / "categories"
+        for file_name in ["domeme_mappings.json", "ownerclan_mappings.json", "zentrade_mappings.json", "standard_categories.json"]:
+            file_path = categories_path / file_name
+            if file_path.exists():
+                with open(file_path, "r", encoding="utf-8") as f:
+                    mappings.extend(json.load(f))
+        return mappings
+
+    def get_supplier_code(self, supplier_id: str) -> str:
+        """공급사 ID로 코드를 조회합니다."""
+        # 간단한 매핑 또는 NotImplementedError
+        if supplier_id == "domeme":
+            return "DM"
+        elif supplier_id == "ownerclan":
+            return "OC"
+        elif supplier_id == "zentrade":
+            return "ZT"
+        raise NotImplementedError(f"Supplier code for {supplier_id} not implemented in JSONStorage.")
+
+    def get_marketplace_code(self, marketplace_id: str) -> str:
+        """마켓플레이스 ID로 코드를 조회합니다."""
+        # 간단한 매핑 또는 NotImplementedError
+        if marketplace_id == "coupang":
+            return "CP"
+        elif marketplace_id == "elevenst":
+            return "11ST"
+        elif marketplace_id == "smartstore":
+            return "SS"
+        raise NotImplementedError(f"Marketplace code for {marketplace_id} not implemented in JSONStorage.")
