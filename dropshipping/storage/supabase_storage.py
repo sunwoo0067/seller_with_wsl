@@ -541,3 +541,17 @@ class SupabaseStorage(BaseStorage):
 
         except Exception as e:
             logger.error(f"파이프라인 로그 업데이트 실패: {str(e)}")
+
+    async def upsert(self, table_name: str, records: List[Dict[str, Any]], on_conflict: str) -> List[Dict[str, Any]]:
+        """레코드를 삽입하거나 업데이트합니다."""
+        try:
+            result = self.client.table(table_name).upsert(records, on_conflict=on_conflict).execute()
+            if result.data:
+                logger.debug(f"Upserted {len(result.data)} records into {table_name}")
+                return result.data
+            else:
+                logger.warning(f"No records upserted into {table_name}")
+                return []
+        except Exception as e:
+            logger.error(f"Upsert failed for table {table_name}: {str(e)}")
+            raise

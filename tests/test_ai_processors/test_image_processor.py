@@ -158,8 +158,14 @@ class TestImageProcessor:
     async def test_remove_background(self, mock_execute_with_model, processor, test_image):
         """배경 제거 테스트"""
         # Mocked PIL Image 반환
+        # 실제 PNG 이미지 데이터를 Base64로 인코딩하여 반환
+        green_image = Image.new('RGBA', (100, 100), color='green')
+        buffered = io.BytesIO()
+        green_image.save(buffered, format="PNG")
+        encoded_image = base64.b64encode(buffered.getvalue()).decode()
+
         mock_execute_with_model.return_value = {
-            "image_data": base64.b64encode(io.BytesIO(Image.new('RGBA', (100, 100), color='green').tobytes()).getvalue()).decode(),
+            "image_data": encoded_image,
             "usage": {"total_tokens": 100}
         }
 

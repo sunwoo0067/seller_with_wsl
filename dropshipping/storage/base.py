@@ -130,6 +130,11 @@ class BaseStorage(ABC):
         pass
 
     @abstractmethod
+    async def upsert(self, table_name: str, records: List[Dict[str, Any]], on_conflict: str) -> List[Dict[str, Any]]:
+        """레코드를 삽입하거나 업데이트합니다."""
+        pass
+
+    @abstractmethod
     def get_marketplace_upload(self, product_id: str, marketplace: str) -> Optional[Dict[str, Any]]:
         """마켓플레이스 업로드 기록을 조회합니다."""
         pass

@@ -122,7 +122,42 @@ class MockStorage(BaseStorage):
         del self.data[table][id]
         return True
     
-    # BaseStorage 추상 메서드 구현
+    # BaseStorage 추상 메서드 구현 (추가)
+    async def get_all_category_mappings(self) -> List[Dict[str, Any]]:
+        return []
+
+    async def get_supplier_code(self, supplier_id: str) -> str:
+        return supplier_id
+
+    async def get_marketplace_code(self, marketplace_id: str) -> str:
+        return marketplace_id
+
+    async def upsert(self, table_name: str, records: List[Dict[str, Any]], on_conflict: str) -> List[Dict[str, Any]]:
+        # 간단한 upsert mock
+        if table_name not in self.data:
+            self.data[table_name] = {}
+        upserted_records = []
+        for record in records:
+            # 실제 DB의 on_conflict 로직을 완벽히 모방하기는 어려우므로, 간단히 ID 기반으로 처리
+            # 실제 테스트에서는 이 부분이 중요하면 더 정교하게 mock해야 함
+            record_id = record.get("id") or str(self.id_counter)
+            if record_id not in self.data[table_name]:
+                self.id_counter += 1
+                record["id"] = record_id
+                record["created_at"] = datetime.now()
+            record["updated_at"] = datetime.now()
+            self.data[table_name][record_id] = record
+            upserted_records.append(record)
+        return upserted_records
+
+    async def get_marketplace_upload(self, product_id: str, marketplace: str) -> Optional[Dict[str, Any]]:
+        # Mock 구현: 항상 None 반환 (업로드 기록 없음 가정)
+        return None
+
+    async def save_marketplace_upload(self, record: Dict[str, Any]):
+        # Mock 구현: 아무것도 하지 않음
+        pass
+
     async def save_raw_product(self, supplier: str, product_data: dict) -> dict:
         return await self.create("raw_products", product_data)
     
