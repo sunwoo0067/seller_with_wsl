@@ -1,0 +1,45 @@
+[Unit]
+Description=드랍쉬핑 자동화 시스템 API 서버
+Documentation=https://github.com/yourusername/dropshipping-automation
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=exec
+User=dropshipping
+Group=dropshipping
+WorkingDirectory=/opt/dropshipping
+
+# 환경 변수
+EnvironmentFile=/opt/dropshipping/.env
+Environment="PYTHONPATH=/opt/dropshipping"
+Environment="ENV=production"
+
+# 실행 명령
+ExecStartPre=/usr/bin/python3 -m pip install -r requirements.txt
+ExecStart=/usr/bin/python3 -m dropshipping.api.main
+
+# 재시작 정책
+Restart=always
+RestartSec=10
+StartLimitInterval=200
+StartLimitBurst=5
+
+# 프로세스 제한
+LimitNOFILE=65536
+LimitNPROC=4096
+
+# 보안 설정
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/dropshipping/logs /opt/dropshipping/data
+
+# 로깅
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=dropshipping-api
+
+[Install]
+WantedBy=multi-user.target

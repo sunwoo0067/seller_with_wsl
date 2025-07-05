@@ -1,0 +1,31 @@
+# Core dependencies
+supabase>=2.0.0
+httpx>=0.25.0
+requests>=2.31.0
+beautifulsoup4>=4.12.0
+lxml>=5.0.0
+pandas>=2.1.0
+openpyxl>=3.1.0
+pydantic>=2.5.0
+python-dotenv>=1.0.0
+click>=8.1.0
+tenacity>=8.2.0
+loguru>=0.7.0
+apscheduler>=3.10.0
+tqdm>=4.66.0
+
+# AI/ML dependencies (optional)
+# ollama>=0.1.0
+# google-generativeai>=0.3.0
+pillow>=10.1.0
+
+# Development dependencies
+pytest>=7.4.0
+faker>=20.0.0
+pytest-asyncio>=0.21.0
+pytest-cov>=4.1.0
+pytest-mock>=3.11.0
+black>=23.9.0
+ruff>=0.1.0
+mypy>=1.5.0
+pre-commit>=3.4.0

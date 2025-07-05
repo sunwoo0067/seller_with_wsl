@@ -1,0 +1,50 @@
+[
+  {
+    "supplier_id": "ownerclan",
+    "supplier_category_code": "여성의류",
+    "supplier_category_name": "여성의류",
+    "standard_category_code": "FASHION_WOMEN",
+    "confidence": 1.0,
+    "keywords": []
+  },
+  {
+    "supplier_id": "ownerclan",
+    "supplier_category_code": "남성의류",
+    "supplier_category_name": "남성의류",
+    "standard_category_code": "FASHION_MEN",
+    "confidence": 1.0,
+    "keywords": []
+  },
+  {
+    "supplier_id": "ownerclan",
+    "supplier_category_code": "신발",
+    "supplier_category_name": "신발",
+    "standard_category_code": "FASHION_SHOES",
+    "confidence": 1.0,
+    "keywords": []
+  },
+  {
+    "supplier_id": "ownerclan",
+    "supplier_category_code": "가방",
+    "supplier_category_name": "가방",
+    "standard_category_code": "FASHION_BAGS",
+    "confidence": 1.0,
+    "keywords": []
+  },
+  {
+    "supplier_id": "ownerclan",
+    "supplier_category_code": "화장품",
+    "supplier_category_name": "화장품",
+    "standard_category_code": "BEAUTY",
+    "confidence": 1.0,
+    "keywords": []
+  },
+  {
+    "supplier_id": "ownerclan",
+    "supplier_category_code": "디지털",
+    "supplier_category_name": "디지털",
+    "standard_category_code": "ELECTRONICS",
+    "confidence": 1.0,
+    "keywords": []
+  }
+]

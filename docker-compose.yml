@@ -1,0 +1,204 @@
+version: '3.8'
+
+services:
+  # API 서버
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: dropshipping-api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      # 환경 설정
+      ENV: production
+      LOG_LEVEL: INFO
+      
+      # 데이터베이스
+      SUPABASE_URL: ${SUPABASE_URL}
+      SUPABASE_KEY: ${SUPABASE_KEY}
+      DATABASE_URL: ${DATABASE_URL}
+      
+      # API 키
+      DOMEME_API_KEY: ${DOMEME_API_KEY}
+      DOMEGGOOK_API_KEY: ${DOMEGGOOK_API_KEY}
+      OWNERCLAN_API_KEY: ${OWNERCLAN_API_KEY}
+      ZENTRADE_API_KEY: ${ZENTRADE_API_KEY}
+      
+      # 마켓플레이스 API
+      COUPANG_ACCESS_KEY: ${COUPANG_ACCESS_KEY}
+      COUPANG_SECRET_KEY: ${COUPANG_SECRET_KEY}
+      COUPANG_VENDOR_ID: ${COUPANG_VENDOR_ID}
+      ELEVENST_API_KEY: ${ELEVENST_API_KEY}
+      ELEVENST_USERNAME: ${ELEVENST_USERNAME}
+      ELEVENST_PASSWORD: ${ELEVENST_PASSWORD}
+      SMARTSTORE_CLIENT_ID: ${SMARTSTORE_CLIENT_ID}
+      SMARTSTORE_CLIENT_SECRET: ${SMARTSTORE_CLIENT_SECRET}
+      SMARTSTORE_ACCESS_TOKEN: ${SMARTSTORE_ACCESS_TOKEN}
+      SMARTSTORE_REFRESH_TOKEN: ${SMARTSTORE_REFRESH_TOKEN}
+      
+      # AI 모델
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY}
+      REPLICATE_API_TOKEN: ${REPLICATE_API_TOKEN}
+      OLLAMA_HOST: ${OLLAMA_HOST:-http://ollama:11434}
+      
+      # 알림
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL}
+      SLACK_TOKEN: ${SLACK_TOKEN}
+      SLACK_CHANNEL: ${SLACK_CHANNEL}
+      SMTP_HOST: ${SMTP_HOST}
+      SMTP_PORT: ${SMTP_PORT}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      EMAIL_FROM: ${EMAIL_FROM}
+      EMAIL_TO: ${EMAIL_TO}
+      
+      # 스케줄러
+      SCHEDULER_ENABLED: "true"
+    volumes:
+      - ./logs:/app/logs
+      - ./data:/app/data
+    depends_on:
+      - redis
+      - ollama
+    networks:
+      - dropshipping-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Redis (캐시 및 큐)
+  redis:
+    image: redis:7-alpine
+    container_name: dropshipping-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - dropshipping-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # Ollama (로컬 AI)
+  ollama:
+    image: ollama/ollama:latest
+    container_name: dropshipping-ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    networks:
+      - dropshipping-network
+    environment:
+      OLLAMA_HOST: 0.0.0.0
+    deploy:
+      resources:
+        limits:
+          memory: 8G
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  # Nginx (리버스 프록시)
+  nginx:
+    image: nginx:alpine
+    container_name: dropshipping-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./ssl:/etc/nginx/ssl:ro
+      - nginx-cache:/var/cache/nginx
+    depends_on:
+      - api
+    networks:
+      - dropshipping-network
+    healthcheck:
+      test: ["CMD", "nginx", "-t"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Prometheus (모니터링)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: dropshipping-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    networks:
+      - dropshipping-network
+
+  # Grafana (대시보드)
+  grafana:
+    image: grafana/grafana:latest
+    container_name: dropshipping-grafana
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+      GF_INSTALL_PLUGINS: grafana-clock-panel,grafana-simple-json-datasource
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on:
+      - prometheus
+    networks:
+      - dropshipping-network
+
+  # 백업 서비스
+  backup:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: dropshipping-backup
+    restart: unless-stopped
+    command: ["python", "-m", "dropshipping.backup"]
+    environment:
+      ENV: production
+      SUPABASE_URL: ${SUPABASE_URL}
+      SUPABASE_KEY: ${SUPABASE_KEY}
+      BACKUP_S3_BUCKET: ${BACKUP_S3_BUCKET}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+    volumes:
+      - ./backups:/app/backups
+    networks:
+      - dropshipping-network
+
+networks:
+  dropshipping-network:
+    driver: bridge
+
+volumes:
+  redis-data:
+  ollama-data:
+  prometheus-data:
+  grafana-data:
+  nginx-cache:

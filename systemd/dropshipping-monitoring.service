@@ -1,0 +1,44 @@
+[Unit]
+Description=드랍쉬핑 자동화 시스템 모니터링 대시보드
+Documentation=https://github.com/yourusername/dropshipping-automation
+After=network.target dropshipping-api.service
+Wants=network-online.target
+
+[Service]
+Type=exec
+User=dropshipping
+Group=dropshipping
+WorkingDirectory=/opt/dropshipping
+
+# 환경 변수
+EnvironmentFile=/opt/dropshipping/.env
+Environment="PYTHONPATH=/opt/dropshipping"
+Environment="ENV=production"
+
+# 실행 명령
+ExecStart=/usr/bin/python3 -m dropshipping.monitoring.dashboard
+
+# 재시작 정책
+Restart=always
+RestartSec=10
+StartLimitInterval=200
+StartLimitBurst=5
+
+# 프로세스 제한
+LimitNOFILE=65536
+LimitNPROC=2048
+
+# 보안 설정
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/dropshipping/logs
+
+# 로깅
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=dropshipping-monitoring
+
+[Install]
+WantedBy=multi-user.target
