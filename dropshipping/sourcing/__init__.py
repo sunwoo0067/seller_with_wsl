@@ -1,17 +1,19 @@
 # -*- coding: utf-8 -*-
 """
 Sourcing Intelligence Module
-Sales Analysis, Competitor Monitoring, Keyword Research
+Sales Analysis, Competitor Monitoring, Keyword Research, Trend Prediction
 """
 
 from dropshipping.sourcing.sales_analyzer import SalesAnalyzer
 from dropshipping.sourcing.competitor_monitor import CompetitorMonitor
 from dropshipping.sourcing.keyword_researcher import KeywordResearcher
-from dropshipping.sourcing.sourcing_manager import SourcingManager
+from dropshipping.sourcing.trend_predictor import TrendPredictor
+from dropshipping.sourcing.dashboard import SourcingDashboard
 
 __all__ = [
     "SalesAnalyzer",
     "CompetitorMonitor",
     "KeywordResearcher",
-    "SourcingManager"
+    "TrendPredictor",
+    "SourcingDashboard"
 ]
