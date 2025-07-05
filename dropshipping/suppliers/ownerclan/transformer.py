@@ -2,14 +2,15 @@
 Ownerclan transformer
 """
 
-from typing import Dict, Any
-from dropshipping.transformers.base import BaseTransformer
+from typing import Any, Dict
+
 from dropshipping.models.product import StandardProduct
+from dropshipping.transformers.base import BaseTransformer
 
 
 class OwnerclanTransformer(BaseTransformer):
     """Ownerclan product transformer"""
-    
+
     def transform(self, raw_product: Dict[str, Any]) -> StandardProduct:
         """Transform raw product to standard format"""
         # TODO: Implement actual transformation logic
@@ -26,5 +27,5 @@ class OwnerclanTransformer(BaseTransformer):
             images=[],
             options=[],
             stock_quantity=raw_product.get("stock", 0),
-            is_active=True
+            is_active=True,
         )

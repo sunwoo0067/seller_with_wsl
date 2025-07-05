@@ -7,8 +7,8 @@ import json
 import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Any, List, Optional
 from threading import Lock
+from typing import Any, Dict, List, Optional
 
 from loguru import logger
 
@@ -290,7 +290,9 @@ class JSONStorage(BaseStorage):
             self._save_data()
 
     # BaseStorage 추상 메서드 구현
-    async def upsert(self, table_name: str, records: List[Dict[str, Any]], on_conflict: str) -> List[Dict[str, Any]]:
+    async def upsert(
+        self, table_name: str, records: List[Dict[str, Any]], on_conflict: str
+    ) -> List[Dict[str, Any]]:
         """레코드를 삽입하거나 업데이트합니다."""
         # JSONStorage는 upsert를 직접 지원하지 않으므로 NotImplementedError 발생
         raise NotImplementedError("JSONStorage does not support upsert operation directly.")
@@ -307,7 +309,9 @@ class JSONStorage(BaseStorage):
 
     def get_pricing_rules(self, active_only: bool = True) -> List[Dict[str, Any]]:
         """가격 책정 규칙을 조회합니다."""
-        pricing_rules_path = Path(__file__).parent.parent.parent / "demo_data" / "pricing" / "pricing_rules.json"
+        pricing_rules_path = (
+            Path(__file__).parent.parent.parent / "demo_data" / "pricing" / "pricing_rules.json"
+        )
         if pricing_rules_path.exists():
             with open(pricing_rules_path, "r", encoding="utf-8") as f:
                 rules = json.load(f)
@@ -320,7 +324,12 @@ class JSONStorage(BaseStorage):
         """모든 카테고리 매핑 정보를 조회합니다."""
         mappings = []
         categories_path = Path(__file__).parent.parent.parent / "demo_data" / "categories"
-        for file_name in ["domeme_mappings.json", "ownerclan_mappings.json", "zentrade_mappings.json", "standard_categories.json"]:
+        for file_name in [
+            "domeme_mappings.json",
+            "ownerclan_mappings.json",
+            "zentrade_mappings.json",
+            "standard_categories.json",
+        ]:
             file_path = categories_path / file_name
             if file_path.exists():
                 with open(file_path, "r", encoding="utf-8") as f:
@@ -336,7 +345,9 @@ class JSONStorage(BaseStorage):
             return "OC"
         elif supplier_id == "zentrade":
             return "ZT"
-        raise NotImplementedError(f"Supplier code for {supplier_id} not implemented in JSONStorage.")
+        raise NotImplementedError(
+            f"Supplier code for {supplier_id} not implemented in JSONStorage."
+        )
 
     def get_marketplace_code(self, marketplace_id: str) -> str:
         """마켓플레이스 ID로 코드를 조회합니다."""
@@ -347,4 +358,6 @@ class JSONStorage(BaseStorage):
             return "11ST"
         elif marketplace_id == "smartstore":
             return "SS"
-        raise NotImplementedError(f"Marketplace code for {marketplace_id} not implemented in JSONStorage.")
+        raise NotImplementedError(
+            f"Marketplace code for {marketplace_id} not implemented in JSONStorage."
+        )

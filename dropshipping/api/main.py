@@ -3,26 +3,23 @@ API 서버 메인 애플리케이션
 """
 
 from contextlib import asynccontextmanager
-from typing import Dict, Any
-import asyncio
 
-from fastapi import FastAPI, Request, status, Depends
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.middleware.trustedhost import TrustedHostMiddleware
-from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.responses import JSONResponse
+from fastapi import Depends, FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
+from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from dropshipping.config import settings
-from dropshipping.storage.supabase_storage import SupabaseStorage
-from dropshipping.monitoring import setup_logging, get_logger, alert_manager, global_metrics
+from dropshipping.monitoring import alert_manager, get_logger, global_metrics, setup_logging
 from dropshipping.scheduler.main import MainScheduler
+from dropshipping.storage.supabase_storage import SupabaseStorage
 
-from .routers import products, orders, suppliers, marketplaces, sourcing, monitoring
-from .middleware import TimingMiddleware, AuthMiddleware
 from .dependencies import get_storage
-
+from .middleware import AuthMiddleware, TimingMiddleware
+from .routers import marketplaces, monitoring, orders, products, sourcing, suppliers
 
 logger = get_logger(__name__)
 
@@ -32,39 +29,39 @@ async def lifespan(app: FastAPI):
     """애플리케이션 생명주기 관리"""
     # 시작 시
     logger.info("API 서버 시작")
-    
+
     # 로깅 설정
     setup_logging(
         log_level=settings.log_level,
         log_file=settings.log_file,
-        json_logs=settings.env == "production"
+        json_logs=settings.env == "production",
     )
-    
+
     # 알림 매니저 시작
     try:
         alert_manager.start()
     except Exception as e:
         logger.warning(f"알림 매니저 시작 실패: {e}")
-    
+
     # 스케줄러 시작 (설정된 경우)
     scheduler = None
     if settings.scheduler_enabled:
         scheduler = MainScheduler()
         scheduler.start()
         logger.info("스케줄러 시작됨")
-    
+
     # 스토리지 초기화 (TODO: SupabaseStorage 구현 완료 후 활성화)
     # app.state.storage = SupabaseStorage()
     app.state.storage = None  # 임시
-    
+
     yield
-    
+
     # 종료 시
     logger.info("API 서버 종료")
-    
+
     # 알림 매니저 종료
     await alert_manager.stop()
-    
+
     # 스케줄러 종료
     if scheduler:
         scheduler.shutdown()
@@ -78,7 +75,7 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc",
     openapi_url="/openapi.json",
-    lifespan=lifespan
+    lifespan=lifespan,
 )
 
 # 미들웨어 설정
@@ -93,10 +90,7 @@ app.add_middleware(
 
 # Trusted Host (프로덕션에서만)
 if settings.is_production():
-    app.add_middleware(
-        TrustedHostMiddleware,
-        allowed_hosts=["*"]  # TODO: 환경변수에서 가져오기
-    )
+    app.add_middleware(TrustedHostMiddleware, allowed_hosts=["*"])  # TODO: 환경변수에서 가져오기
 
 # GZip 압축
 app.add_middleware(GZipMiddleware, minimum_size=1000)
@@ -119,16 +113,12 @@ app.include_router(monitoring.router, prefix="/api/v1/monitoring", tags=["monito
 async def http_exception_handler(request: Request, exc: StarletteHTTPException):
     """HTTP 예외 처리"""
     global_metrics.increment("api.errors")
-    
+
     return JSONResponse(
         status_code=exc.status_code,
         content={
-            "error": {
-                "code": exc.status_code,
-                "message": exc.detail,
-                "path": str(request.url.path)
-            }
-        }
+            "error": {"code": exc.status_code, "message": exc.detail, "path": str(request.url.path)}
+        },
     )
 
 
@@ -136,16 +126,10 @@ async def http_exception_handler(request: Request, exc: StarletteHTTPException):
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     """검증 오류 처리"""
     global_metrics.increment("api.validation_errors")
-    
+
     return JSONResponse(
         status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-        content={
-            "error": {
-                "code": 422,
-                "message": "Validation Error",
-                "details": exc.errors()
-            }
-        }
+        content={"error": {"code": 422, "message": "Validation Error", "details": exc.errors()}},
     )
 
 
@@ -153,30 +137,22 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 async def general_exception_handler(request: Request, exc: Exception):
     """일반 예외 처리"""
     global_metrics.increment("api.errors")
-    
+
     logger.exception(f"처리되지 않은 예외: {exc}")
-    
+
     # 알림 전송
     await alert_manager.send(
         title="API 서버 오류",
         message=f"처리되지 않은 예외 발생: {str(exc)}",
         level="error",
         source="api.exception",
-        metadata={
-            "path": str(request.url.path),
-            "method": request.method
-        },
-        error=exc
+        metadata={"path": str(request.url.path), "method": request.method},
+        error=exc,
     )
-    
+
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        content={
-            "error": {
-                "code": 500,
-                "message": "Internal Server Error"
-            }
-        }
+        content={"error": {"code": 500, "message": "Internal Server Error"}},
     )
 
 
@@ -190,7 +166,7 @@ async def root():
         "status": "running",
         "environment": settings.env,
         "docs": "/docs",
-        "health": "/health"
+        "health": "/health",
     }
 
 
@@ -204,22 +180,22 @@ async def health_check(storage: SupabaseStorage = Depends(get_storage)):
     except Exception as e:
         logger.error(f"DB 헬스 체크 실패: {e}")
         db_status = "unhealthy"
-    
+
     # 메트릭 요약
     metrics = global_metrics.get_summary()
-    
+
     return {
         "status": "healthy" if db_status == "healthy" else "degraded",
         "checks": {
             "database": db_status,
             "scheduler": "healthy" if settings.scheduler_enabled else "disabled",
-            "monitoring": "healthy"
+            "monitoring": "healthy",
         },
         "metrics": {
             "api_requests": metrics["system"]["api"]["total_requests"],
             "api_errors": metrics["system"]["api"]["total_errors"],
-            "products_processed": metrics["business"]["products"]["processed"]
-        }
+            "products_processed": metrics["business"]["products"]["processed"],
+        },
     }
 
 
@@ -227,18 +203,18 @@ async def health_check(storage: SupabaseStorage = Depends(get_storage)):
 def run():
     """API 서버 실행"""
     import uvicorn
-    
+
     host = "0.0.0.0"  # TODO: 환경변수에서 가져오기
     port = 8000  # TODO: 환경변수에서 가져오기
-    
+
     logger.info(f"API 서버 시작: http://{host}:{port}")
-    
+
     uvicorn.run(
         "dropshipping.api.main:app",
         host=host,
         port=port,
         reload=settings.is_development(),
-        log_level=settings.log_level.lower()
+        log_level=settings.log_level.lower(),
     )
 
 

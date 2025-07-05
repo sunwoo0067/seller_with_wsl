@@ -3,26 +3,25 @@
 11번가 OpenAPI를 통한 상품 업로드
 """
 
-import base64
-from typing import Dict, Any, List, Optional, Tuple
+import xml.etree.ElementTree as ET
 from datetime import datetime
 from decimal import Decimal
-import httpx
-import xml.etree.ElementTree as ET
+from typing import Any, Dict, List, Optional, Tuple
 
+import httpx
 from loguru import logger
 
 from dropshipping.models.product import StandardProduct
-from dropshipping.uploader.base import BaseUploader, MarketplaceType, UploadStatus
+from dropshipping.uploader.base import BaseUploader, MarketplaceType
 
 
 class ElevenstUploader(BaseUploader):
     """11번가 업로더"""
-    
+
     def __init__(self, storage, config: Optional[Dict[str, Any]] = None):
         """
         초기화
-        
+
         Args:
             storage: 저장소 인스턴스
             config: 11번가 API 설정
@@ -31,57 +30,57 @@ class ElevenstUploader(BaseUploader):
                 - test_mode: 테스트 모드 여부
         """
         super().__init__(MarketplaceType.ELEVENST, storage, config)
-        
+
         # API 설정
         self.seller_id = self.config.get("seller_id")
         self.test_mode = self.config.get("test_mode", False)
-        
+
         # API 엔드포인트
         self.base_url = "https://api.11st.co.kr/rest"
-        
+
         # 11번가 카테고리 매핑
         self.category_mapping = {
             "전자기기/이어폰": "159966",  # 이어폰/헤드폰
-            "의류/여성의류": "103755",   # 여성의류
-            "애완용품": "201775",       # 반려동물용품
+            "의류/여성의류": "103755",  # 여성의류
+            "애완용품": "201775",  # 반려동물용품
             # 실제로는 더 많은 매핑 필요
         }
-        
+
         # HTTP 클라이언트
         self.client = httpx.AsyncClient(timeout=30.0)
-    
+
     async def validate_product(self, product: StandardProduct) -> Tuple[bool, Optional[str]]:
         """상품 검증"""
         errors = []
-        
+
         # 필수 필드 검증
         if not product.name:
             errors.append("상품명 누락")
         elif len(product.name) > 200:
             errors.append("상품명이 너무 깁니다 (최대 200자)")
-        
+
         if not product.price or product.price < 100:
             errors.append("판매가격이 너무 낮습니다 (최소 100원)")
-        
+
         if not product.images or len(product.images) == 0:
             errors.append("상품 이미지가 없습니다")
-        
+
         # 카테고리 확인
         if product.category_name not in self.category_mapping:
             errors.append(f"지원하지 않는 카테고리: {product.category_name}")
-        
+
         # 상품 설명 길이 확인
         if product.description and len(product.description) > 40000:
             errors.append("상품 설명이 너무 깁니다 (최대 40000자)")
-        
+
         if errors:
             return False, "; ".join(errors)
-        
+
         return True, None
-    
+
     async def transform_product(self, product: StandardProduct) -> Dict[str, Any]:
         """상품 데이터 변환 (XML 형식)"""
-        
+
         # 11번가 XML 구조
         product_data = {
             "Product": {
@@ -128,13 +127,13 @@ class ElevenstUploader(BaseUploader):
                 "saleEndDate": "2099-12-31 23:59:59",
             }
         }
-        
+
         # 옵션 정보 추가
         if product.variants:
             product_data["Product"]["productOption"] = self._create_options(product)
-        
+
         return product_data
-    
+
     def _create_html_detail(self, product: StandardProduct) -> str:
         """HTML 상세 설명 생성"""
         html = f"""
@@ -161,11 +160,11 @@ class ElevenstUploader(BaseUploader):
         </div>
         """
         return html
-    
+
     def _create_options(self, product: StandardProduct) -> List[Dict[str, Any]]:
         """옵션 정보 생성"""
         options = []
-        
+
         for i, variant in enumerate(product.variants):
             option = {
                 "optionSeq": str(i + 1),
@@ -173,16 +172,16 @@ class ElevenstUploader(BaseUploader):
                 "optionValue": variant.option_value,
                 "optionPrice": "0",  # 옵션 추가금 없음
                 "optionQty": str(variant.stock),
-                "optionUseYn": "Y"
+                "optionUseYn": "Y",
             }
             options.append(option)
-        
+
         return options
-    
+
     def _dict_to_xml(self, data: Dict[str, Any], root_name: str = "Product") -> str:
         """딕셔너리를 XML로 변환"""
         root = ET.Element(root_name)
-        
+
         def build_xml(element, data):
             if isinstance(data, dict):
                 for key, value in data.items():
@@ -198,142 +197,126 @@ class ElevenstUploader(BaseUploader):
                             sub_elem.text = str(value) if value is not None else ""
             else:
                 element.text = str(data) if data is not None else ""
-        
+
         build_xml(root, data["Product"])
-        
+
         # XML 문자열로 변환
-        xml_str = ET.tostring(root, encoding='unicode')
-        
+        xml_str = ET.tostring(root, encoding="unicode")
+
         # XML 선언 추가
         return f'<?xml version="1.0" encoding="UTF-8"?>\n{xml_str}'
-    
+
     async def upload_single(self, product_data: Dict[str, Any]) -> Dict[str, Any]:
         """단일 상품 업로드"""
         try:
             # XML 변환
             xml_data = self._dict_to_xml(product_data)
-            
+
             # API 호출
             response = await self._api_request(
                 "POST",
                 "/prodservices/product",
                 content=xml_data,
-                headers={
-                    "Content-Type": "text/xml;charset=UTF-8"
-                }
+                headers={"Content-Type": "text/xml;charset=UTF-8"},
             )
-            
+
             # XML 응답 파싱
             root = ET.fromstring(response.text)
-            
+
             result_code = root.find(".//resultCode")
             result_msg = root.find(".//resultMsg")
             product_no = root.find(".//prdNo")
-            
+
             if result_code is not None and result_code.text == "200":
                 return {
                     "success": True,
                     "product_id": product_no.text if product_no is not None else None,
-                    "message": result_msg.text if result_msg is not None else "성공"
+                    "message": result_msg.text if result_msg is not None else "성공",
                 }
             else:
                 return {
                     "success": False,
                     "error": result_msg.text if result_msg is not None else "업로드 실패",
-                    "code": result_code.text if result_code is not None else None
+                    "code": result_code.text if result_code is not None else None,
                 }
-                
+
         except Exception as e:
             logger.error(f"11번가 업로드 오류: {str(e)}")
-            return {
-                "success": False,
-                "error": str(e)
-            }
-    
+            return {"success": False, "error": str(e)}
+
     async def update_single(
-        self,
-        marketplace_product_id: str,
-        product_data: Dict[str, Any]
+        self, marketplace_product_id: str, product_data: Dict[str, Any]
     ) -> Dict[str, Any]:
         """단일 상품 수정"""
         try:
             # 상품번호 추가
             product_data["Product"]["prdNo"] = marketplace_product_id
-            
+
             # XML 변환
             xml_data = self._dict_to_xml(product_data)
-            
+
             # API 호출
             response = await self._api_request(
                 "PUT",
                 "/prodservices/product",
                 content=xml_data,
-                headers={
-                    "Content-Type": "text/xml;charset=UTF-8"
-                }
+                headers={"Content-Type": "text/xml;charset=UTF-8"},
             )
-            
+
             # XML 응답 파싱
             root = ET.fromstring(response.text)
-            
+
             result_code = root.find(".//resultCode")
             result_msg = root.find(".//resultMsg")
-            
+
             if result_code is not None and result_code.text == "200":
                 return {
                     "success": True,
                     "product_id": marketplace_product_id,
-                    "message": result_msg.text if result_msg is not None else "성공"
+                    "message": result_msg.text if result_msg is not None else "성공",
                 }
             else:
                 return {
                     "success": False,
                     "error": result_msg.text if result_msg is not None else "수정 실패",
-                    "code": result_code.text if result_code is not None else None
+                    "code": result_code.text if result_code is not None else None,
                 }
-                
+
         except Exception as e:
             logger.error(f"11번가 수정 오류: {str(e)}")
-            return {
-                "success": False,
-                "error": str(e)
-            }
-    
+            return {"success": False, "error": str(e)}
+
     async def check_product_status(self, marketplace_product_id: str) -> Dict[str, Any]:
         """상품 상태 확인"""
         try:
             response = await self._api_request(
-                "GET",
-                f"/prodservices/product/{marketplace_product_id}"
+                "GET", f"/prodservices/product/{marketplace_product_id}"
             )
-            
+
             # XML 응답 파싱
             root = ET.fromstring(response.text)
-            
+
             result_code = root.find(".//resultCode")
             result_msg = root.find(".//resultMsg")
             status = root.find(".//productStatCd")
-            
+
             if result_code is not None and result_code.text == "200":
                 return {
                     "success": True,
                     "status": status.text if status is not None else None,
                     "status_name": self._get_status_name(status.text if status is not None else ""),
-                    "product_data": self._xml_to_dict(root)
+                    "product_data": self._xml_to_dict(root),
                 }
             else:
                 return {
                     "success": False,
-                    "error": result_msg.text if result_msg is not None else "조회 실패"
+                    "error": result_msg.text if result_msg is not None else "조회 실패",
                 }
-                
+
         except Exception as e:
             logger.error(f"11번가 상태 확인 오류: {str(e)}")
-            return {
-                "success": False,
-                "error": str(e)
-            }
-    
+            return {"success": False, "error": str(e)}
+
     def _get_status_name(self, status_code: str) -> str:
         """상태 코드를 이름으로 변환"""
         status_mapping = {
@@ -341,14 +324,14 @@ class ElevenstUploader(BaseUploader):
             "102": "판매불가",
             "103": "판매중",
             "104": "판매중지",
-            "105": "품절"
+            "105": "품절",
         }
         return status_mapping.get(status_code, "알 수 없음")
-    
+
     def _xml_to_dict(self, element) -> Dict[str, Any]:
         """XML을 딕셔너리로 변환"""
         result = {}
-        
+
         for child in element:
             if len(child) == 0:
                 result[child.tag] = child.text
@@ -356,41 +339,32 @@ class ElevenstUploader(BaseUploader):
                 if child.tag not in result:
                     result[child.tag] = []
                 result[child.tag].append(self._xml_to_dict(child))
-        
+
         return result
-    
-    async def _api_request(
-        self,
-        method: str,
-        path: str,
-        **kwargs
-    ) -> httpx.Response:
+
+    async def _api_request(self, method: str, path: str, **kwargs) -> httpx.Response:
         """11번가 API 요청"""
-        
+
         # 인증 헤더
         headers = kwargs.get("headers", {})
         headers["openapikey"] = self.api_key
         kwargs["headers"] = headers
-        
+
         # 요청 URL
         url = self.base_url + path
-        
+
         # API 호출
         logger.debug(f"11번가 API 호출: {method} {url}")
-        
-        response = await self.client.request(
-            method,
-            url,
-            **kwargs
-        )
-        
+
+        response = await self.client.request(method, url, **kwargs)
+
         # 응답 처리
         if response.status_code == 200:
             return response
         else:
             logger.error(f"11번가 API 오류: {response.status_code} - {response.text}")
             raise Exception(f"API 오류: {response.status_code}")
-    
+
     async def close(self):
         """HTTP 클라이언트 종료"""
         await self.client.aclose()

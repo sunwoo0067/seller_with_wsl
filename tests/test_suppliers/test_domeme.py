@@ -2,14 +2,14 @@
 도매매(Domeme) API 클라이언트 및 수집기 테스트
 """
 
-import pytest
-from unittest.mock import Mock, patch, MagicMock
 from datetime import datetime
-import xml.etree.ElementTree as ET
+from unittest.mock import Mock, patch
 
-from dropshipping.suppliers.domeme.client import DomemeClient, DomemeAPIError
-from dropshipping.suppliers.domeme.fetcher import DomemeFetcher
+import pytest
+
 from dropshipping.storage.json_storage import JSONStorage
+from dropshipping.suppliers.domeme.client import DomemeAPIError, DomemeClient
+from dropshipping.suppliers.domeme.fetcher import DomemeFetcher
 
 
 class TestDomemeClient:
@@ -342,8 +342,8 @@ class TestDomemeTransformer:
 
     def test_transform_to_standard(self):
         """표준 형식 변환 테스트"""
-        from dropshipping.transformers.domeme import DomemeTransformer
         from dropshipping.models.product import ProductStatus
+        from dropshipping.transformers.domeme import DomemeTransformer
 
         transformer = DomemeTransformer()
 

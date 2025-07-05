@@ -5,9 +5,9 @@ pytest 공통 fixtures 및 설정
 import os
 import sys
 from pathlib import Path
-from typing import Generator
-import pytest
 from unittest.mock import Mock, patch
+
+import pytest
 
 # 프로젝트 루트를 Python 경로에 추가
 PROJECT_ROOT = Path(__file__).parent.parent
@@ -68,7 +68,7 @@ def mock_requests(monkeypatch):
 
     mock_get = Mock(return_value=mock_response)
     monkeypatch.setattr("requests.get", mock_get)
-    
+
     return mock_get
 
 

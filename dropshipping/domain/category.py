@@ -4,13 +4,12 @@
 """
 
 import json
-from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Any
 from dataclasses import dataclass
 from difflib import SequenceMatcher
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
 
 from loguru import logger
-
 
 from dropshipping.storage.base import BaseStorage
 
@@ -50,20 +49,24 @@ class CategoryMapper:
 
         # 모든 공급사와 마켓플레이스에 대한 매핑을 가져옴
         # 실제 구현에서는 필요한 만큼만 가져오도록 최적화 가능
-        all_mappings = self.storage.get_all_category_mappings() # 이 메서드는 storage에 추가 필요
-        
+        all_mappings = self.storage.get_all_category_mappings()  # 이 메서드는 storage에 추가 필요
+
         for mapping_data in all_mappings:
             mapping = CategoryMapping(
-                supplier_code=mapping_data['supplier_category_code'],
-                supplier_name=mapping_data['supplier_category_name'],
-                marketplace=self._get_marketplace_code(mapping_data['marketplace_id']), # ID -> code 변환 필요
-                marketplace_code=mapping_data['marketplace_category_code'],
-                marketplace_name=mapping_data['marketplace_category_name'],
-                confidence=float(mapping_data.get('confidence', 1.0))
+                supplier_code=mapping_data["supplier_category_code"],
+                supplier_name=mapping_data["supplier_category_name"],
+                marketplace=self._get_marketplace_code(
+                    mapping_data["marketplace_id"]
+                ),  # ID -> code 변환 필요
+                marketplace_code=mapping_data["marketplace_category_code"],
+                marketplace_name=mapping_data["marketplace_category_name"],
+                confidence=float(mapping_data.get("confidence", 1.0)),
             )
-            supplier_code = self._get_supplier_code(mapping_data['supplier_id']) # ID -> code 변환 필요
+            supplier_code = self._get_supplier_code(
+                mapping_data["supplier_id"]
+            )  # ID -> code 변환 필요
             self.add_mapping(mapping, supplier_id=supplier_code)
-        
+
         logger.info(f"DB에서 {len(all_mappings)}개의 카테고리 매핑을 로드했습니다.")
 
     # ID-code 변환을 위한 헬퍼 메서드 (실제로는 storage나 별도 캐시에서 관리)

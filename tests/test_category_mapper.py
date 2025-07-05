@@ -2,17 +2,17 @@
 카테고리 매핑 시스템 테스트
 """
 
-import pytest
-import tempfile
 import shutil
+import tempfile
 from pathlib import Path
-from typing import Dict, Any
+
+import pytest
 
 from dropshipping.transformers.category_mapper import (
+    CategoryLevel,
     CategoryMapper,
     StandardCategory,
     SupplierCategoryMapping,
-    CategoryLevel
 )
 
 
@@ -41,7 +41,7 @@ class TestCategoryMapper:
     def test_standard_category_structure(self, category_mapper):
         """표준 카테고리 구조 테스트"""
         fashion = category_mapper.standard_categories["FASHION"]
-        
+
         assert fashion.code == "FASHION"
         assert fashion.name == "패션의류"
         assert fashion.level == CategoryLevel.LEVEL_1
@@ -55,7 +55,7 @@ class TestCategoryMapper:
         # FASHION_WOMEN이 있다면 계층 구조 테스트
         if "FASHION_WOMEN" in category_mapper.standard_categories:
             hierarchy = category_mapper.get_category_hierarchy("FASHION_WOMEN")
-            
+
             assert len(hierarchy) == 2
             assert hierarchy[0].code == "FASHION"  # 부모
             assert hierarchy[1].code == "FASHION_WOMEN"  # 자식
@@ -66,7 +66,7 @@ class TestCategoryMapper:
         standard_code, confidence = category_mapper.map_supplier_category(
             "domeme", "001", "패션의류"
         )
-        
+
         assert standard_code == "FASHION"
         assert confidence == 1.0
 
@@ -76,19 +76,16 @@ class TestCategoryMapper:
         standard_code, confidence = category_mapper.map_supplier_category(
             "domeme", "999", "여성 블라우스"
         )
-        
+
         assert standard_code in category_mapper.standard_categories
         assert 0 < confidence <= 1.0
 
     def test_product_name_based_mapping(self, category_mapper):
         """상품명 기반 매핑 테스트"""
         standard_code, confidence = category_mapper.map_supplier_category(
-            "unknown_supplier", 
-            "unknown_category", 
-            None,
-            "나이키 운동화 신발"
+            "unknown_supplier", "unknown_category", None, "나이키 운동화 신발"
         )
-        
+
         # 스포츠 또는 패션 카테고리로 매핑되어야 함
         assert standard_code in ["SPORTS", "FASHION", "FASHION_SHOES"]
         assert confidence > 0
@@ -110,26 +107,26 @@ class TestCategoryMapper:
         # 첫 번째 호출
         text = "여성 블라우스"
         result1 = category_mapper._map_by_keywords(text)
-        
+
         # 두 번째 호출 (캐시 사용)
         result2 = category_mapper._map_by_keywords(text)
-        
+
         assert result1 == result2
         assert text.lower() in category_mapper.keyword_cache
 
     def test_add_new_supplier_mapping(self, category_mapper):
         """새로운 공급사 매핑 추가 테스트"""
         initial_count = len(category_mapper.supplier_mappings.get("test_supplier", {}))
-        
+
         # 새로운 매핑 추가
         category_mapper._add_supplier_mapping(
             "test_supplier", "TEST001", "테스트 카테고리", "FASHION", 0.9
         )
-        
+
         # 매핑이 추가되었는지 확인
         assert "test_supplier" in category_mapper.supplier_mappings
         assert "TEST001" in category_mapper.supplier_mappings["test_supplier"]
-        
+
         mapping = category_mapper.supplier_mappings["test_supplier"]["TEST001"]
         assert mapping.standard_category_code == "FASHION"
         assert mapping.confidence == 0.9
@@ -143,7 +140,7 @@ class TestCategoryMapper:
             ("운동화 나이키", "SPORTS"),
             ("아기 기저귀", "BABY"),
         ]
-        
+
         for text, expected_category in test_cases:
             result = category_mapper._map_by_keywords(text)
             # 정확한 매칭이 어려울 수 있으므로 결과가 있는지만 확인
@@ -156,9 +153,7 @@ class TestCategoryMapper:
         assert conf1 == 1.0
 
         # 카테고리명 기반 (중간 신뢰도)
-        code2, conf2 = category_mapper.map_supplier_category(
-            "unknown", "999", "패션의류"
-        )
+        code2, conf2 = category_mapper.map_supplier_category("unknown", "999", "패션의류")
         assert 0.5 <= conf2 < 1.0
 
         # 상품명 기반 (낮은 신뢰도)
@@ -170,11 +165,11 @@ class TestCategoryMapper:
     def test_statistics(self, category_mapper):
         """통계 정보 테스트"""
         stats = category_mapper.get_statistics()
-        
+
         assert "standard_categories" in stats
         assert "supplier_mappings" in stats
         assert "keyword_cache_size" in stats
-        
+
         assert stats["standard_categories"] > 0
         assert isinstance(stats["supplier_mappings"], dict)
         assert stats["keyword_cache_size"] >= 0
@@ -212,7 +207,7 @@ class TestCategoryMapper:
         result1 = category_mapper._map_by_keywords("패션의류")
         result2 = category_mapper._map_by_keywords("패션의류")
         result3 = category_mapper._map_by_keywords("패션의류")
-        
+
         # 모두 같은 결과여야 함
         assert result1 == result2 == result3
 
@@ -222,12 +217,8 @@ class TestStandardCategory:
 
     def test_category_creation(self):
         """카테고리 생성 테스트"""
-        category = StandardCategory(
-            code="TEST",
-            name="테스트",
-            level=CategoryLevel.LEVEL_1
-        )
-        
+        category = StandardCategory(code="TEST", name="테스트", level=CategoryLevel.LEVEL_1)
+
         assert category.code == "TEST"
         assert category.name == "테스트"
         assert category.level == CategoryLevel.LEVEL_1
@@ -244,9 +235,9 @@ class TestStandardCategory:
             level=CategoryLevel.LEVEL_1,
             children=["FASHION_WOMEN", "FASHION_MEN"],
             keywords=["패션", "의류"],
-            marketplace_mappings={"smartstore": "50000000"}
+            marketplace_mappings={"smartstore": "50000000"},
         )
-        
+
         assert len(category.children) == 2
         assert len(category.keywords) == 2
         assert "smartstore" in category.marketplace_mappings
@@ -261,9 +252,9 @@ class TestSupplierCategoryMapping:
             supplier_id="domeme",
             supplier_category_code="001",
             supplier_category_name="패션의류",
-            standard_category_code="FASHION"
+            standard_category_code="FASHION",
         )
-        
+
         assert mapping.supplier_id == "domeme"
         assert mapping.supplier_category_code == "001"
         assert mapping.supplier_category_name == "패션의류"
@@ -279,8 +270,8 @@ class TestSupplierCategoryMapping:
             supplier_category_name="알 수 없음",
             standard_category_code="FASHION",
             confidence=0.7,
-            keywords=["키워드1", "키워드2"]
+            keywords=["키워드1", "키워드2"],
         )
-        
+
         assert mapping.confidence == 0.7
-        assert len(mapping.keywords) == 2 
+        assert len(mapping.keywords) == 2

@@ -7,13 +7,11 @@ import hashlib
 import json
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Dict, Any, List, Optional, Tuple
-from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
 
 from loguru import logger
-# tenacity 대신 수동 재시도 구현
 
-from dropshipping.models.product import StandardProduct
+# tenacity 대신 수동 재시도 구현
 from dropshipping.transformers.base import BaseTransformer
 
 
@@ -85,7 +83,7 @@ class BaseFetcher(ABC):
         max_retries = 3
         retry_count = 0
         wait_time = 4  # 초기 대기 시간
-        
+
         while retry_count < max_retries:
             try:
                 return fetch_func(*args, **kwargs)
@@ -94,9 +92,10 @@ class BaseFetcher(ABC):
                 if retry_count >= max_retries:
                     logger.error(f"Fetch 최종 실패 (시도 {retry_count}/{max_retries}): {str(e)}")
                     raise FetchError(f"Fetch 실패: {str(e)}")
-                
+
                 logger.warning(f"Fetch 실패 (시도 {retry_count}/{max_retries}): {str(e)}")
                 import time
+
                 time.sleep(wait_time)
                 wait_time = min(wait_time * 2, 10)  # 지수 백오프, 최대 10초
 

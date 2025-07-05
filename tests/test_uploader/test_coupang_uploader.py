@@ -2,26 +2,24 @@
 쿠팡 업로더 테스트
 """
 
-import pytest
 import asyncio
-from unittest.mock import Mock, AsyncMock, patch
-import json
-from decimal import Decimal
+from unittest.mock import AsyncMock, Mock, patch
 
-from dropshipping.models.product import StandardProduct, ProductImage, ProductVariant
-from dropshipping.uploader.coupang_api.coupang_uploader import CoupangUploader
-from dropshipping.uploader.base import UploadStatus
+import pytest
+
+from dropshipping.models.product import ProductImage, ProductVariant, StandardProduct
 from dropshipping.storage.base import BaseStorage
+from dropshipping.uploader.coupang_api.coupang_uploader import CoupangUploader
 
 
 class TestCoupangUploader:
     """CoupangUploader 테스트"""
-    
+
     @pytest.fixture
     def mock_storage(self):
         """Mock 저장소"""
         return Mock(spec=BaseStorage)
-    
+
     @pytest.fixture
     def uploader(self, mock_storage):
         """테스트용 쿠팡 업로더"""
@@ -31,10 +29,10 @@ class TestCoupangUploader:
             "vendor_id": "A00000000",
             "test_mode": True,
             "return_center_code": "1000274592",
-            "shipping_place_code": "74010"
+            "shipping_place_code": "74010",
         }
         return CoupangUploader(storage=mock_storage, config=config)
-    
+
     @pytest.fixture
     def sample_product(self):
         """테스트용 상품"""
@@ -51,29 +49,25 @@ class TestCoupangUploader:
             brand="TestBrand",
             images=[
                 ProductImage(url="https://example.com/main.jpg", is_main=True),
-                ProductImage(url="https://example.com/sub1.jpg", is_main=False)
+                ProductImage(url="https://example.com/sub1.jpg", is_main=False),
             ],
-            attributes={
-                "shipping_fee": 2500,
-                "model": "TWS-001",
-                "manufacturer": "테스트 제조사"
-            }
+            attributes={"shipping_fee": 2500, "model": "TWS-001", "manufacturer": "테스트 제조사"},
         )
-    
+
     def test_init(self, uploader):
         """초기화 테스트"""
         assert uploader.vendor_id == "A00000000"
         assert uploader.test_mode is True
         assert uploader.base_url == "https://api-gateway-it.coupang.com"
         assert "전자기기/이어폰" in uploader.category_mapping
-    
+
     def test_validate_product_success(self, uploader, sample_product):
         """상품 검증 성공 테스트"""
         is_valid, error = asyncio.run(uploader.validate_product(sample_product))
-        
+
         assert is_valid is True
         assert error is None
-    
+
     def test_validate_product_fail(self, uploader):
         """상품 검증 실패 테스트"""
         invalid_product = StandardProduct(
@@ -85,21 +79,21 @@ class TestCoupangUploader:
             cost=30,
             category_name="미지원카테고리",
             stock=0,
-            images=[]  # 이미지 없음
+            images=[],  # 이미지 없음
         )
-        
+
         is_valid, error = asyncio.run(uploader.validate_product(invalid_product))
-        
+
         assert is_valid is False
         assert "상품명 누락" in error
         assert "판매가격이 너무 낮습니다" in error
         assert "상품 이미지가 없습니다" in error
         assert "지원하지 않는 카테고리" in error
-    
+
     def test_transform_product(self, uploader, sample_product):
         """상품 변환 테스트"""
         coupang_data = asyncio.run(uploader.transform_product(sample_product))
-        
+
         assert coupang_data["displayCategoryCode"] == "1001"
         assert coupang_data["sellerProductName"] == sample_product.name
         assert coupang_data["vendorId"] == "A00000000"
@@ -110,7 +104,7 @@ class TestCoupangUploader:
         assert coupang_data["images"][1]["imageType"] == "DETAIL"
         assert len(coupang_data["items"]) == 1
         assert coupang_data["sellerProductId"] == "cp-test-001"
-    
+
     def test_transform_product_with_variants(self, uploader):
         """옵션이 있는 상품 변환 테스트"""
         product_with_variants = StandardProduct(
@@ -128,121 +122,100 @@ class TestCoupangUploader:
                     options={"사이즈": "S"},
                     price=19900,
                     stock=30,
-                    barcode="1234567890123"
+                    barcode="1234567890123",
                 ),
-                ProductVariant(
-                    sku="cp-test-002-M",
-                    options={"사이즈": "M"},
-                    price=19900,
-                    stock=40
-                ),
-                ProductVariant(
-                    sku="cp-test-002-L",
-                    options={"사이즈": "L"},
-                    price=19900,
-                    stock=30
-                )
-            ]
+                ProductVariant(sku="cp-test-002-M", options={"사이즈": "M"}, price=19900, stock=40),
+                ProductVariant(sku="cp-test-002-L", options={"사이즈": "L"}, price=19900, stock=30),
+            ],
         )
-        
+
         coupang_data = asyncio.run(uploader.transform_product(product_with_variants))
-        
+
         items = coupang_data["items"]
         assert len(items) == 3
         assert items[0]["itemName"] == "S"  # 옵션값이 itemName이 됨
         assert items[0]["externalVendorSku"] == "cp-test-002-S"
         assert items[0]["barcode"] == "1234567890123"
         assert items[1]["emptyBarcode"] is True
-    
+
     def test_create_auth_headers(self, uploader):
         """인증 헤더 생성 테스트"""
         headers = uploader._create_auth_headers(
             "GET",
             "/v2/providers/seller_api/apis/api/v1/marketplace/seller-products",
-            {"vendorId": "A00000000"}
+            {"vendorId": "A00000000"},
         )
-        
+
         assert "Authorization" in headers
         assert headers["Authorization"].startswith("CEA algorithm=HmacSHA256")
         assert "access-key=test_access_key" in headers["Authorization"]
         assert headers["X-Requested-By"] == "A00000000"
         assert headers["Content-Type"] == "application/json;charset=UTF-8"
-    
+
     def test_upload_single_success(self, uploader):
         """단일 상품 업로드 성공 테스트"""
         mock_response = {
             "code": "SUCCESS",
             "message": "상품 등록 성공",
-            "data": {
-                "productId": "1234567890"
-            }
+            "data": {"productId": "1234567890"},
         }
-        
-        with patch.object(uploader, '_api_request', new_callable=AsyncMock) as mock_api:
+
+        with patch.object(uploader, "_api_request", new_callable=AsyncMock) as mock_api:
             mock_api.return_value = mock_response
-            
+
             result = asyncio.run(uploader.upload_single({"test": "data"}))
-        
+
         assert result["success"] is True
         assert result["product_id"] == "1234567890"
         assert result["message"] == "상품 등록 성공"
-    
+
     def test_upload_single_fail(self, uploader):
         """단일 상품 업로드 실패 테스트"""
-        mock_response = {
-            "code": "ERROR",
-            "message": "필수 항목이 누락되었습니다"
-        }
-        
-        with patch.object(uploader, '_api_request', new_callable=AsyncMock) as mock_api:
+        mock_response = {"code": "ERROR", "message": "필수 항목이 누락되었습니다"}
+
+        with patch.object(uploader, "_api_request", new_callable=AsyncMock) as mock_api:
             mock_api.return_value = mock_response
-            
+
             result = asyncio.run(uploader.upload_single({"test": "data"}))
-        
+
         assert result["success"] is False
         assert result["error"] == "필수 항목이 누락되었습니다"
         assert result["code"] == "ERROR"
-    
+
     def test_update_single(self, uploader):
         """상품 수정 테스트"""
-        mock_response = {
-            "code": "SUCCESS",
-            "message": "상품 수정 성공"
-        }
-        
-        with patch.object(uploader, '_api_request', new_callable=AsyncMock) as mock_api:
+        mock_response = {"code": "SUCCESS", "message": "상품 수정 성공"}
+
+        with patch.object(uploader, "_api_request", new_callable=AsyncMock) as mock_api:
             mock_api.return_value = mock_response
-            
+
             result = asyncio.run(uploader.update_single("1234567890", {"test": "data"}))
-        
+
         assert result["success"] is True
         assert result["product_id"] == "1234567890"
-        
+
         # API 호출 시 productId가 추가되었는지 확인
         call_args = mock_api.call_args
         assert call_args[1]["json"]["productId"] == "1234567890"
-    
+
     def test_check_product_status(self, uploader):
         """상품 상태 확인 테스트"""
         mock_response = {
             "code": "SUCCESS",
-            "data": {
-                "status": "APPROVED",
-                "statusName": "승인완료"
-            }
+            "data": {"status": "APPROVED", "statusName": "승인완료"},
         }
-        
-        with patch.object(uploader, '_api_request', new_callable=AsyncMock) as mock_api:
+
+        with patch.object(uploader, "_api_request", new_callable=AsyncMock) as mock_api:
             mock_api.return_value = mock_response
-            
+
             result = asyncio.run(uploader.check_product_status("1234567890"))
-        
+
         assert result["success"] is True
         assert result["status"] == "APPROVED"
         assert result["status_name"] == "승인완료"
-    
+
     def test_close(self, uploader):
         """HTTP 클라이언트 종료 테스트"""
-        with patch.object(uploader.client, 'aclose', new_callable=AsyncMock) as mock_close:
+        with patch.object(uploader.client, "aclose", new_callable=AsyncMock) as mock_close:
             asyncio.run(uploader.close())
             mock_close.assert_called_once()

@@ -5,11 +5,10 @@
 
 from dataclasses import dataclass
 from decimal import Decimal
-from typing import Dict, Any, List, Optional
 from enum import Enum
+from typing import Any, Dict, List, Optional
 
 from loguru import logger
-
 
 from dropshipping.storage.base import BaseStorage
 
@@ -68,10 +67,26 @@ class PricingRule:
             max_cost=Decimal(str(conditions["max_cost"])) if "max_cost" in conditions else None,
             category_codes=conditions.get("category_codes"),
             supplier_ids=conditions.get("supplier_ids"),
-            margin_rate=Decimal(str(pricing_params["margin_rate"])) if "margin_rate" in pricing_params else None,
-            fixed_margin=Decimal(str(pricing_params["fixed_margin"])) if "fixed_margin" in pricing_params else None,
-            min_margin_amount=Decimal(str(pricing_params["min_margin_amount"])) if "min_margin_amount" in pricing_params else None,
-            max_margin_amount=Decimal(str(pricing_params["max_margin_amount"])) if "max_margin_amount" in pricing_params else None,
+            margin_rate=(
+                Decimal(str(pricing_params["margin_rate"]))
+                if "margin_rate" in pricing_params
+                else None
+            ),
+            fixed_margin=(
+                Decimal(str(pricing_params["fixed_margin"]))
+                if "fixed_margin" in pricing_params
+                else None
+            ),
+            min_margin_amount=(
+                Decimal(str(pricing_params["min_margin_amount"]))
+                if "min_margin_amount" in pricing_params
+                else None
+            ),
+            max_margin_amount=(
+                Decimal(str(pricing_params["max_margin_amount"]))
+                if "max_margin_amount" in pricing_params
+                else None
+            ),
             platform_fee_rate=Decimal(str(additional_costs.get("platform_fee_rate", "0.1"))),
             payment_fee_rate=Decimal(str(additional_costs.get("payment_fee_rate", "0.03"))),
             packaging_cost=Decimal(str(additional_costs.get("packaging_cost", "1000"))),
@@ -111,7 +126,7 @@ class PricingCalculator:
     def __init__(self, storage: Optional[BaseStorage] = None):
         self.storage = storage
         self.rules: List[PricingRule] = []
-        
+
         if self.storage:
             self.load_rules_from_db()
         else:
@@ -202,7 +217,7 @@ class PricingCalculator:
             cost = Decimal(str(product["cost"]))
             if cost <= 0:
                 raise ValueError("원가는 0보다 커야 합니다")
-        except (TypeError, ValueError, ArithmeticError) as e:
+        except (TypeError, ValueError, ArithmeticError):
             raise ValueError(f"원가 형식이 올바르지 않습니다: {product.get('cost')}")
 
         shipping_fee = Decimal(str(product.get("shipping_fee", 0)))

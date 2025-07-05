@@ -2,12 +2,13 @@
 데이터 변환기 단위 테스트
 """
 
-import pytest
 from decimal import Decimal
 
-from dropshipping.transformers.domeme import DomemeTransformer
-from dropshipping.models.product import StandardProduct, ProductStatus
+import pytest
+
+from dropshipping.models.product import ProductStatus, StandardProduct
 from dropshipping.tests.fixtures.mock_data import MockDataGenerator
+from dropshipping.transformers.domeme import DomemeTransformer
 
 
 class TestDomemeTransformer:

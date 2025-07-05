@@ -4,12 +4,12 @@
 """
 
 from abc import ABC, abstractmethod
-from typing import Dict, Any, Optional, List, TypeVar, Generic
 from datetime import datetime
+from typing import Any, Dict, List, Optional, TypeVar
 
-from dropshipping.models.product import StandardProduct
 from loguru import logger
 
+from dropshipping.models.product import StandardProduct
 
 T = TypeVar("T")  # 원본 데이터 타입
 
@@ -149,6 +149,7 @@ class BaseTransformer(ABC):
 
 class DictTransformer(BaseTransformer):
     """딕셔너리 기반 데이터 변환기"""
+
     """
     딕셔너리 형태의 원본 데이터를 다루는 변환기
     대부분의 JSON/XML API 응답에 사용

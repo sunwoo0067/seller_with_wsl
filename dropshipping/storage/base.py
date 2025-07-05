@@ -4,8 +4,7 @@ DB, 파일 등 다양한 저장소 구현을 위한 추상 클래스
 """
 
 from abc import ABC, abstractmethod
-from datetime import datetime
-from typing import Dict, Any, List, Optional
+from typing import Any, Dict, List, Optional
 
 from dropshipping.models.product import StandardProduct
 
@@ -130,7 +129,9 @@ class BaseStorage(ABC):
         pass
 
     @abstractmethod
-    async def upsert(self, table_name: str, records: List[Dict[str, Any]], on_conflict: str) -> List[Dict[str, Any]]:
+    async def upsert(
+        self, table_name: str, records: List[Dict[str, Any]], on_conflict: str
+    ) -> List[Dict[str, Any]]:
         """레코드를 삽입하거나 업데이트합니다."""
         pass
 

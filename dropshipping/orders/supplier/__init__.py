@@ -6,8 +6,4 @@
 from dropshipping.orders.supplier.base import BaseSupplierOrderer, SupplierType
 from dropshipping.orders.supplier.domeme_orderer import DomemeOrderer
 
-__all__ = [
-    "BaseSupplierOrderer",
-    "SupplierType", 
-    "DomemeOrderer"
-]
+__all__ = ["BaseSupplierOrderer", "SupplierType", "DomemeOrderer"]

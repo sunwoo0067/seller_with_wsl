@@ -3,19 +3,17 @@ Supabase 저장소 구현
 PostgreSQL 기반 데이터 저장 및 관리
 """
 
-import json
 from datetime import datetime
 from decimal import Decimal
-from typing import Dict, Any, List, Optional, Tuple
-from uuid import UUID
+from typing import Any, Dict, List, Optional
 
 from loguru import logger
-from supabase import create_client, Client
+from supabase import Client, create_client
 from supabase.lib.client_options import ClientOptions
 
-from dropshipping.models.product import StandardProduct, ProductImage, ProductOption
-from dropshipping.storage.base import BaseStorage
 from dropshipping.config import settings
+from dropshipping.models.product import ProductImage, ProductOption, StandardProduct
+from dropshipping.storage.base import BaseStorage
 
 
 class SupabaseStorage(BaseStorage):
@@ -44,7 +42,7 @@ class SupabaseStorage(BaseStorage):
                 persist_session=False,
             ),
         )
-        
+
         self.supplier_id_cache = {}
         self.marketplace_id_cache = {}
 
@@ -106,7 +104,9 @@ class SupabaseStorage(BaseStorage):
                 "price": float(product.price),
                 "list_price": float(product.list_price) if product.list_price else None,
                 "stock": product.stock,
-                "status": product.status if isinstance(product.status, str) else product.status.value,
+                "status": (
+                    product.status if isinstance(product.status, str) else product.status.value
+                ),
                 "category_code": product.category_code,
                 "category_name": product.category_name,
                 "category_path": product.category_path,
@@ -279,9 +279,7 @@ class SupabaseStorage(BaseStorage):
             # 공급사별 통계는 별도 쿼리로
             if not supplier_id:
                 supplier_stats = (
-                    self.client.table("products_processed")
-                    .select("supplier_id")
-                    .execute()
+                    self.client.table("products_processed").select("supplier_id").execute()
                 )
 
                 for record in supplier_stats.data:
@@ -301,13 +299,13 @@ class SupabaseStorage(BaseStorage):
         try:
             suppliers = self.client.table("suppliers").select("id, code").execute()
             for s in suppliers.data:
-                self.supplier_id_cache[s['id']] = s['code']
-                self.supplier_id_cache[s['code']] = s['id']
+                self.supplier_id_cache[s["id"]] = s["code"]
+                self.supplier_id_cache[s["code"]] = s["id"]
 
             marketplaces = self.client.table("marketplaces").select("id, code").execute()
             for m in marketplaces.data:
-                self.marketplace_id_cache[m['id']] = m['code']
-                self.marketplace_id_cache[m['code']] = m['id']
+                self.marketplace_id_cache[m["id"]] = m["code"]
+                self.marketplace_id_cache[m["code"]] = m["id"]
             logger.info("ID 캐시 초기화 완료")
         except Exception as e:
             logger.error(f"ID 캐시 초기화 실패: {e}")
@@ -463,9 +461,7 @@ class SupabaseStorage(BaseStorage):
             logger.error(f"가격 규칙 조회 실패: {str(e)}")
             return []
 
-    def get_category_mappings(
-        self, supplier_id: str, marketplace_id: str
-    ) -> List[Dict[str, Any]]:
+    def get_category_mappings(self, supplier_id: str, marketplace_id: str) -> List[Dict[str, Any]]:
         """카테고리 매핑 조회"""
         try:
             supplier_uuid = self._get_supplier_id(supplier_id)
@@ -542,10 +538,14 @@ class SupabaseStorage(BaseStorage):
         except Exception as e:
             logger.error(f"파이프라인 로그 업데이트 실패: {str(e)}")
 
-    async def upsert(self, table_name: str, records: List[Dict[str, Any]], on_conflict: str) -> List[Dict[str, Any]]:
+    async def upsert(
+        self, table_name: str, records: List[Dict[str, Any]], on_conflict: str
+    ) -> List[Dict[str, Any]]:
         """레코드를 삽입하거나 업데이트합니다."""
         try:
-            result = self.client.table(table_name).upsert(records, on_conflict=on_conflict).execute()
+            result = (
+                self.client.table(table_name).upsert(records, on_conflict=on_conflict).execute()
+            )
             if result.data:
                 logger.debug(f"Upserted {len(result.data)} records into {table_name}")
                 return result.data

@@ -1,9 +1,10 @@
-
-import pytest
 from unittest.mock import MagicMock, patch
 
-from dropshipping.suppliers.domeme.fetcher import DomemeFetcher
+import pytest
+
 from dropshipping.suppliers.domeme.client import DomemeAPIError
+from dropshipping.suppliers.domeme.fetcher import DomemeFetcher
+
 
 # Mock 데이터
 @pytest.fixture
@@ -22,6 +23,7 @@ def mock_domeme_client():
             ],
             "has_next": True,
         }
+
     client.search_products.side_effect = mock_search_products
 
     # fetch_detail에 대한 Mock 설정
@@ -31,6 +33,7 @@ def mock_domeme_client():
     }
 
     return client
+
 
 @pytest.fixture
 def mock_storage():
@@ -53,14 +56,16 @@ def test_fetch_list_success(mock_domeme_client, mock_storage):
     assert has_next is True
     assert products[0]["productName"] == "Test Product 1"
 
+
 def test_fetch_list_api_error(mock_domeme_client, mock_storage):
     """상품 목록 조회 API 오류 테스트"""
     mock_domeme_client.search_products.side_effect = DomemeAPIError("API Error")
     fetcher = DomemeFetcher(storage=mock_storage)
     fetcher.client = mock_domeme_client
 
-    with pytest.raises(Exception): # FetchError는 Exception을 상속
+    with pytest.raises(Exception):  # FetchError는 Exception을 상속
         fetcher.fetch_list(page=1)
+
 
 def test_fetch_detail_success(mock_domeme_client, mock_storage):
     """상품 상세 조회 성공 테스트"""
@@ -71,6 +76,7 @@ def test_fetch_detail_success(mock_domeme_client, mock_storage):
 
     assert detail["productNo"] == "1"
     assert "description" in detail
+
 
 @patch("dropshipping.suppliers.base.base_fetcher.BaseFetcher.is_duplicate")
 def test_run_incremental_saves_new_products(mock_is_duplicate, mock_domeme_client, mock_storage):

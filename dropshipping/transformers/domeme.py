@@ -3,12 +3,19 @@
 """
 
 from decimal import Decimal
-from typing import Dict, Any, List, Optional
+from typing import Any, Dict, List, Optional
 
 from loguru import logger
 
-from dropshipping.models.product import StandardProduct, ProductImage, ProductOption, OptionType, ProductStatus
+from dropshipping.models.product import (
+    OptionType,
+    ProductImage,
+    ProductOption,
+    ProductStatus,
+    StandardProduct,
+)
 from dropshipping.transformers.base import BaseTransformer
+
 
 class DomemeTransformer(BaseTransformer):
     """도매매 데이터를 StandardProduct 모델로 변환"""
@@ -24,9 +31,11 @@ class DomemeTransformer(BaseTransformer):
             product_no = data.get("productNo") or data.get("productNm")
             product_name = data.get("productName") or data.get("productNm")
             price = data.get("price") or data.get("supplyPrice")
-            
+
             if not all([product_no, product_name, price]):
-                logger.warning(f"필수 필드가 누락되었습니다: {data.get('productNo', data.get('productNm'))}")
+                logger.warning(
+                    f"필수 필드가 누락되었습니다: {data.get('productNo', data.get('productNm'))}"
+                )
                 return None
 
             # 가격 정보 처리
@@ -70,7 +79,7 @@ class DomemeTransformer(BaseTransformer):
                 description=data.get("description", ""),
                 shipping_fee=self._to_decimal(data.get("deliveryPrice", 0)),
                 shipping_method=data.get("deliveryType", "택배"),
-                raw_data=data
+                raw_data=data,
             )
 
             return product
@@ -104,7 +113,7 @@ class DomemeTransformer(BaseTransformer):
             cat_name = data.get(f"category{i}Name")
             if cat_name:
                 category_path_names.append(cat_name)
-        
+
         category_name = category_path_names[-1] if category_path_names else None
         return category_code, category_name, category_path_names
 
@@ -112,15 +121,15 @@ class DomemeTransformer(BaseTransformer):
         """이미지 정보 추출"""
         images = []
         # 메인 이미지
-        if data.get("mainImage"): 
+        if data.get("mainImage"):
             images.append(ProductImage(url=data["mainImage"], is_main=True, order=0))
-        
+
         # 추가 이미지
         for i in range(1, 11):
             img_url = data.get(f"addImg{i}")
             if img_url:
                 images.append(ProductImage(url=img_url, is_main=False, order=i))
-        
+
         return images
 
     def _extract_options(self, data: Dict[str, Any]) -> List[ProductOption]:
@@ -134,18 +143,18 @@ class DomemeTransformer(BaseTransformer):
 
         try:
             # 옵션 그룹 분리
-            option_groups = option_str.split('|')
+            option_groups = option_str.split("|")
             for group in option_groups:
-                parts = group.split(':')
+                parts = group.split(":")
                 if len(parts) == 2:
                     name, values_str = parts
-                    values = values_str.split(',')
+                    values = values_str.split(",")
                     options.append(
                         ProductOption(
                             name=name.strip(),
                             type=OptionType.SELECT,
                             values=[v.strip() for v in values],
-                            required=True
+                            required=True,
                         )
                     )
         except Exception as e:

@@ -4,16 +4,17 @@
 """
 
 import json
-from typing import Dict, Any, List, Optional, Tuple
-from pathlib import Path
 from dataclasses import dataclass
 from enum import Enum
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
 
 from loguru import logger
 
 
 class CategoryLevel(Enum):
     """카테고리 레벨"""
+
     LEVEL_1 = 1  # 대분류
     LEVEL_2 = 2  # 중분류
     LEVEL_3 = 3  # 소분류
@@ -23,6 +24,7 @@ class CategoryLevel(Enum):
 @dataclass
 class StandardCategory:
     """표준 카테고리 정의"""
+
     code: str
     name: str
     level: CategoryLevel
@@ -43,6 +45,7 @@ class StandardCategory:
 @dataclass
 class SupplierCategoryMapping:
     """공급사 카테고리 매핑"""
+
     supplier_id: str
     supplier_category_code: str
     supplier_category_name: str
@@ -65,16 +68,16 @@ class CategoryMapper:
         """
         self.data_dir = data_dir or Path(__file__).parent / "data"
         self.data_dir.mkdir(exist_ok=True)
-        
+
         # 표준 카테고리 체계
         self.standard_categories: Dict[str, StandardCategory] = {}
-        
+
         # 공급사별 매핑
         self.supplier_mappings: Dict[str, Dict[str, SupplierCategoryMapping]] = {}
-        
+
         # 키워드 기반 매핑 캐시
         self.keyword_cache: Dict[str, str] = {}
-        
+
         # 초기 데이터 로드
         self._load_standard_categories()
         self._load_supplier_mappings()
@@ -82,10 +85,10 @@ class CategoryMapper:
     def _load_standard_categories(self):
         """표준 카테고리 체계 로드"""
         standard_file = self.data_dir / "standard_categories.json"
-        
+
         if standard_file.exists():
             try:
-                with open(standard_file, 'r', encoding='utf-8') as f:
+                with open(standard_file, "r", encoding="utf-8") as f:
                     data = json.load(f)
                     for item in data:
                         category = StandardCategory(**item)
@@ -94,7 +97,7 @@ class CategoryMapper:
                 return
             except Exception as e:
                 logger.error(f"표준 카테고리 로드 실패: {e}")
-        
+
         # 기본 카테고리 체계 생성
         self._create_default_categories()
         self._save_standard_categories()
@@ -103,16 +106,114 @@ class CategoryMapper:
         """기본 표준 카테고리 체계 생성"""
         # 대분류 (Level 1)
         level1_categories = [
-            ("FASHION", "패션의류", ["의류", "패션", "옷", "의상", "블라우스", "셔츠", "바지", "스커트", "드레스", "코트", "자켓"]),
-            ("BEAUTY", "뷰티", ["화장품", "미용", "스킨케어", "메이크업", "크림", "로션", "에센스", "마스크", "클렌징"]),
-            ("ELECTRONICS", "전자제품", ["전자", "디지털", "가전", "IT", "스마트폰", "갤럭시", "아이폰", "노트북", "컴퓨터"]),
-            ("HOME", "홈인테리어", ["가구", "인테리어", "홈데코", "생활용품", "침대", "소파", "테이블", "의자", "수납"]),
-            ("SPORTS", "스포츠/레저", ["운동", "스포츠", "레저", "아웃도어", "운동화", "나이키", "아디다스", "헬스", "요가"]),
-            ("FOOD", "식품", ["음식", "식료품", "건강식품", "간식", "차", "커피", "과자", "음료", "건강"]),
-            ("BABY", "출산/육아", ["유아", "아기", "육아용품", "출산용품", "기저귀", "분유", "젖병", "유모차", "카시트"]),
-            ("PET", "반려동물", ["펫", "동물", "강아지", "고양이", "사료", "간식", "용품", "장난감"]),
+            (
+                "FASHION",
+                "패션의류",
+                [
+                    "의류",
+                    "패션",
+                    "옷",
+                    "의상",
+                    "블라우스",
+                    "셔츠",
+                    "바지",
+                    "스커트",
+                    "드레스",
+                    "코트",
+                    "자켓",
+                ],
+            ),
+            (
+                "BEAUTY",
+                "뷰티",
+                [
+                    "화장품",
+                    "미용",
+                    "스킨케어",
+                    "메이크업",
+                    "크림",
+                    "로션",
+                    "에센스",
+                    "마스크",
+                    "클렌징",
+                ],
+            ),
+            (
+                "ELECTRONICS",
+                "전자제품",
+                [
+                    "전자",
+                    "디지털",
+                    "가전",
+                    "IT",
+                    "스마트폰",
+                    "갤럭시",
+                    "아이폰",
+                    "노트북",
+                    "컴퓨터",
+                ],
+            ),
+            (
+                "HOME",
+                "홈인테리어",
+                [
+                    "가구",
+                    "인테리어",
+                    "홈데코",
+                    "생활용품",
+                    "침대",
+                    "소파",
+                    "테이블",
+                    "의자",
+                    "수납",
+                ],
+            ),
+            (
+                "SPORTS",
+                "스포츠/레저",
+                [
+                    "운동",
+                    "스포츠",
+                    "레저",
+                    "아웃도어",
+                    "운동화",
+                    "나이키",
+                    "아디다스",
+                    "헬스",
+                    "요가",
+                ],
+            ),
+            (
+                "FOOD",
+                "식품",
+                ["음식", "식료품", "건강식품", "간식", "차", "커피", "과자", "음료", "건강"],
+            ),
+            (
+                "BABY",
+                "출산/육아",
+                [
+                    "유아",
+                    "아기",
+                    "육아용품",
+                    "출산용품",
+                    "기저귀",
+                    "분유",
+                    "젖병",
+                    "유모차",
+                    "카시트",
+                ],
+            ),
+            (
+                "PET",
+                "반려동물",
+                ["펫", "동물", "강아지", "고양이", "사료", "간식", "용품", "장난감"],
+            ),
             ("BOOK", "도서", ["책", "서적", "교육", "학습", "소설", "만화", "참고서", "잡지"]),
-            ("HOBBY", "취미/문구", ["취미", "문구", "DIY", "수집", "펜", "노트", "스티커", "만들기"]),
+            (
+                "HOBBY",
+                "취미/문구",
+                ["취미", "문구", "DIY", "수집", "펜", "노트", "스티커", "만들기"],
+            ),
         ]
 
         for code, name, keywords in level1_categories:
@@ -125,7 +226,7 @@ class CategoryMapper:
                     "smartstore": self._get_smartstore_mapping(code),
                     "coupang": self._get_coupang_mapping(code),
                     "gmarket": self._get_gmarket_mapping(code),
-                }
+                },
             )
             self.standard_categories[code] = category
 
@@ -144,7 +245,7 @@ class CategoryMapper:
                 name=name,
                 level=CategoryLevel.LEVEL_2,
                 parent_code=parent,
-                keywords=keywords
+                keywords=keywords,
             )
             self.standard_categories[code] = category
             # 부모 카테고리에 자식 추가
@@ -154,7 +255,12 @@ class CategoryMapper:
         # 뷰티 중분류
         beauty_level2 = [
             ("BEAUTY_SKINCARE", "스킨케어", "BEAUTY", ["스킨케어", "기초화장품", "토너", "에센스"]),
-            ("BEAUTY_MAKEUP", "메이크업", "BEAUTY", ["메이크업", "색조화장품", "립스틱", "파운데이션"]),
+            (
+                "BEAUTY_MAKEUP",
+                "메이크업",
+                "BEAUTY",
+                ["메이크업", "색조화장품", "립스틱", "파운데이션"],
+            ),
             ("BEAUTY_HAIR", "헤어케어", "BEAUTY", ["헤어", "샴푸", "린스", "헤어팩"]),
             ("BEAUTY_BODY", "바디케어", "BEAUTY", ["바디", "로션", "크림", "바디워시"]),
         ]
@@ -165,7 +271,7 @@ class CategoryMapper:
                 name=name,
                 level=CategoryLevel.LEVEL_2,
                 parent_code=parent,
-                keywords=keywords
+                keywords=keywords,
             )
             self.standard_categories[code] = category
             if parent in self.standard_categories:
@@ -222,12 +328,12 @@ class CategoryMapper:
     def _load_supplier_mappings(self):
         """공급사별 매핑 로드"""
         suppliers = ["domeme", "ownerclan", "zentrade"]
-        
+
         for supplier in suppliers:
             mapping_file = self.data_dir / f"{supplier}_mappings.json"
             if mapping_file.exists():
                 try:
-                    with open(mapping_file, 'r', encoding='utf-8') as f:
+                    with open(mapping_file, "r", encoding="utf-8") as f:
                         data = json.load(f)
                         mappings = {}
                         for item in data:
@@ -279,7 +385,7 @@ class CategoryMapper:
         mapping_dict = {}
         for mapping in mappings:
             mapping_dict[mapping.supplier_category_code] = mapping
-        
+
         self.supplier_mappings[supplier_id] = mapping_dict
         self._save_supplier_mappings(supplier_id)
 
@@ -288,7 +394,7 @@ class CategoryMapper:
         supplier_id: str,
         supplier_category_code: str,
         supplier_category_name: str = None,
-        product_name: str = None
+        product_name: str = None,
     ) -> Tuple[Optional[str], float]:
         """
         공급사 카테고리를 표준 카테고리로 매핑
@@ -316,8 +422,11 @@ class CategoryMapper:
                 confidence = 0.7  # 키워드 매핑은 낮은 신뢰도
                 # 새로운 매핑 저장
                 self._add_supplier_mapping(
-                    supplier_id, supplier_category_code, supplier_category_name, 
-                    standard_code, confidence
+                    supplier_id,
+                    supplier_category_code,
+                    supplier_category_name,
+                    standard_code,
+                    confidence,
                 )
                 return standard_code, confidence
 
@@ -338,7 +447,7 @@ class CategoryMapper:
             return None
 
         text_lower = text.lower()
-        
+
         # 캐시 확인
         if text_lower in self.keyword_cache:
             return self.keyword_cache[text_lower]
@@ -364,9 +473,7 @@ class CategoryMapper:
         return best_match
 
     def get_marketplace_category(
-        self, 
-        standard_category_code: str, 
-        marketplace: str
+        self, standard_category_code: str, marketplace: str
     ) -> Optional[str]:
         """
         표준 카테고리를 마켓플레이스 카테고리로 변환
@@ -402,7 +509,7 @@ class CategoryMapper:
         supplier_category_code: str,
         supplier_category_name: str,
         standard_category_code: str,
-        confidence: float
+        confidence: float,
     ):
         """새로운 공급사 매핑 추가"""
         if supplier_id not in self.supplier_mappings:
@@ -413,15 +520,17 @@ class CategoryMapper:
             supplier_category_code=supplier_category_code,
             supplier_category_name=supplier_category_name,
             standard_category_code=standard_category_code,
-            confidence=confidence
+            confidence=confidence,
         )
 
         self.supplier_mappings[supplier_id][supplier_category_code] = mapping
-        
+
         # 파일에 저장
         self._save_supplier_mappings(supplier_id)
-        
-        logger.info(f"새로운 매핑 추가: {supplier_id}.{supplier_category_code} -> {standard_category_code}")
+
+        logger.info(
+            f"새로운 매핑 추가: {supplier_id}.{supplier_category_code} -> {standard_category_code}"
+        )
 
     def _save_standard_categories(self):
         """표준 카테고리를 파일에 저장"""
@@ -429,19 +538,21 @@ class CategoryMapper:
         try:
             data = []
             for category in self.standard_categories.values():
-                data.append({
-                    "code": category.code,
-                    "name": category.name,
-                    "level": category.level.value,
-                    "parent_code": category.parent_code,
-                    "children": category.children,
-                    "keywords": category.keywords,
-                    "marketplace_mappings": category.marketplace_mappings
-                })
-            
-            with open(standard_file, 'w', encoding='utf-8') as f:
+                data.append(
+                    {
+                        "code": category.code,
+                        "name": category.name,
+                        "level": category.level.value,
+                        "parent_code": category.parent_code,
+                        "children": category.children,
+                        "keywords": category.keywords,
+                        "marketplace_mappings": category.marketplace_mappings,
+                    }
+                )
+
+            with open(standard_file, "w", encoding="utf-8") as f:
                 json.dump(data, f, ensure_ascii=False, indent=2)
-            
+
             logger.debug(f"표준 카테고리 저장 완료: {standard_file}")
         except Exception as e:
             logger.error(f"표준 카테고리 저장 실패: {e}")
@@ -455,18 +566,20 @@ class CategoryMapper:
         try:
             data = []
             for mapping in self.supplier_mappings[supplier_id].values():
-                data.append({
-                    "supplier_id": mapping.supplier_id,
-                    "supplier_category_code": mapping.supplier_category_code,
-                    "supplier_category_name": mapping.supplier_category_name,
-                    "standard_category_code": mapping.standard_category_code,
-                    "confidence": mapping.confidence,
-                    "keywords": mapping.keywords
-                })
-            
-            with open(mapping_file, 'w', encoding='utf-8') as f:
+                data.append(
+                    {
+                        "supplier_id": mapping.supplier_id,
+                        "supplier_category_code": mapping.supplier_category_code,
+                        "supplier_category_name": mapping.supplier_category_name,
+                        "standard_category_code": mapping.standard_category_code,
+                        "confidence": mapping.confidence,
+                        "keywords": mapping.keywords,
+                    }
+                )
+
+            with open(mapping_file, "w", encoding="utf-8") as f:
                 json.dump(data, f, ensure_ascii=False, indent=2)
-            
+
             logger.debug(f"{supplier_id} 매핑 저장 완료: {mapping_file}")
         except Exception as e:
             logger.error(f"{supplier_id} 매핑 저장 실패: {e}")
@@ -476,15 +589,17 @@ class CategoryMapper:
         stats = {
             "standard_categories": len(self.standard_categories),
             "supplier_mappings": {},
-            "keyword_cache_size": len(self.keyword_cache)
+            "keyword_cache_size": len(self.keyword_cache),
         }
 
         for supplier_id, mappings in self.supplier_mappings.items():
             stats["supplier_mappings"][supplier_id] = {
                 "total": len(mappings),
                 "high_confidence": len([m for m in mappings.values() if m.confidence >= 0.8]),
-                "medium_confidence": len([m for m in mappings.values() if 0.5 <= m.confidence < 0.8]),
-                "low_confidence": len([m for m in mappings.values() if m.confidence < 0.5])
+                "medium_confidence": len(
+                    [m for m in mappings.values() if 0.5 <= m.confidence < 0.8]
+                ),
+                "low_confidence": len([m for m in mappings.values() if m.confidence < 0.5]),
             }
 
-        return stats 
+        return stats

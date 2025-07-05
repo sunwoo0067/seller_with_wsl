@@ -2,20 +2,21 @@
 Supabase 저장소 테스트
 """
 
-import pytest
-from unittest.mock import Mock, patch, MagicMock
 from datetime import datetime
 from decimal import Decimal
+from unittest.mock import Mock, patch
 from uuid import uuid4
 
-from dropshipping.storage.supabase_storage import SupabaseStorage
+import pytest
+
 from dropshipping.models.product import (
-    StandardProduct,
-    ProductStatus,
+    OptionType,
     ProductImage,
     ProductOption,
-    OptionType,
+    ProductStatus,
+    StandardProduct,
 )
+from dropshipping.storage.supabase_storage import SupabaseStorage
 
 
 class TestSupabaseStorage:
@@ -32,9 +33,7 @@ class TestSupabaseStorage:
     @pytest.fixture
     def storage(self, mock_client):
         """테스트용 저장소"""
-        storage = SupabaseStorage(
-            url="https://test.supabase.co", service_key="test-service-key"
-        )
+        storage = SupabaseStorage(url="https://test.supabase.co", service_key="test-service-key")
         return storage
 
     @pytest.fixture
@@ -58,9 +57,7 @@ class TestSupabaseStorage:
             category_name="패션의류",
             category_path=["패션", "의류", "여성"],
             images=[
-                ProductImage(
-                    url="https://example.com/image1.jpg", is_main=True, order=0
-                ),
+                ProductImage(url="https://example.com/image1.jpg", is_main=True, order=0),
                 ProductImage(url="https://example.com/image2.jpg", order=1),
             ],
             options=[
@@ -82,9 +79,7 @@ class TestSupabaseStorage:
 
     def test_init(self, mock_client):
         """초기화 테스트"""
-        storage = SupabaseStorage(
-            url="https://test.supabase.co", service_key="test-service-key"
-        )
+        storage = SupabaseStorage(url="https://test.supabase.co", service_key="test-service-key")
 
         assert storage.url == "https://test.supabase.co"
         assert storage.service_key == "test-service-key"
@@ -141,11 +136,11 @@ class TestSupabaseStorage:
         # 검증
         assert result == product_id
         mock_client.table.assert_any_call("products_processed")
-        
+
         # upsert 호출 검증
         upsert_call = mock_client.table.return_value.upsert.call_args
         assert upsert_call is not None
-        
+
         # 저장된 데이터 검증
         saved_data = upsert_call[0][0]
         assert saved_data["name"] == "테스트 상품"
@@ -183,7 +178,7 @@ class TestSupabaseStorage:
         # Mock 데이터
         record_id = str(uuid4())
         supplier_id = str(uuid4())
-        
+
         mock_data = {
             "id": record_id,
             "supplier_id": supplier_id,
@@ -250,8 +245,8 @@ class TestSupabaseStorage:
         """상태 업데이트 테스트"""
         # Mock 설정
         record_id = str(uuid4())
-        mock_client.table.return_value.update.return_value.eq.return_value.execute.return_value = Mock(
-            data=[{"id": record_id}]
+        mock_client.table.return_value.update.return_value.eq.return_value.execute.return_value = (
+            Mock(data=[{"id": record_id}])
         )
 
         # 업데이트 실행
@@ -277,16 +272,16 @@ class TestSupabaseStorage:
         raw_table_mock.select.return_value = raw_table_mock
         raw_table_mock.eq.return_value = raw_table_mock
         raw_table_mock.execute.return_value = Mock(count=100, data=[])
-        
+
         processed_table_mock = Mock()
         processed_table_mock.select.return_value = processed_table_mock
         processed_table_mock.eq.return_value = processed_table_mock
         processed_table_mock.execute.return_value = Mock(count=3, data=processed_data)
-        
+
         # table 메서드가 호출되는 순서대로 mock 반환
         mock_client.table.side_effect = [
-            raw_table_mock,       # products_raw 테이블
-            processed_table_mock, # products_processed 테이블
+            raw_table_mock,  # products_raw 테이블
+            processed_table_mock,  # products_processed 테이블
         ]
 
         # 통계 조회
@@ -356,8 +351,8 @@ class TestSupabaseStorage:
         mock_client.table.assert_called_with("pipeline_logs")
 
         # 로그 업데이트
-        mock_client.table.return_value.update.return_value.eq.return_value.execute.return_value = Mock(
-            data=[{"id": log_id}]
+        mock_client.table.return_value.update.return_value.eq.return_value.execute.return_value = (
+            Mock(data=[{"id": log_id}])
         )
 
         storage.update_pipeline_log(

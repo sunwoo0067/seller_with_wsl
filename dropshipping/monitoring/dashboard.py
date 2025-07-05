@@ -5,125 +5,114 @@
 
 import asyncio
 from datetime import datetime, timedelta
-from typing import Dict, Any, List, Optional
-import json
-from pathlib import Path
+from typing import List, Optional
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from fastapi.responses import HTMLResponse, FileResponse
-from fastapi.staticfiles import StaticFiles
 import uvicorn
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi.responses import HTMLResponse
 
-from .metrics import global_metrics
-from .alerts import alert_manager, AlertLevel
+from .alerts import AlertLevel, alert_manager
 from .logger import get_logger
+from .metrics import global_metrics
 
 logger = get_logger(__name__)
 
 
 class DashboardServer:
     """대시보드 서버"""
-    
+
     def __init__(self, host: str = "0.0.0.0", port: int = 8080):
         self.host = host
         self.port = port
         self.app = FastAPI(title="Dropshipping Monitoring Dashboard")
         self.websockets: List[WebSocket] = []
-        
+
         # 라우트 설정
         self._setup_routes()
-        
+
         # 백그라운드 태스크
         self._update_task = None
-    
+
     def _setup_routes(self):
         """라우트 설정"""
-        
+
         @self.app.get("/", response_class=HTMLResponse)
         async def dashboard():
             """대시보드 페이지"""
             return self._get_dashboard_html()
-        
+
         @self.app.get("/api/metrics")
         async def get_metrics():
             """메트릭 조회"""
             return global_metrics.get_summary()
-        
+
         @self.app.get("/api/alerts")
         async def get_alerts(
-            level: Optional[str] = None,
-            source: Optional[str] = None,
-            hours: int = 24
+            level: Optional[str] = None, source: Optional[str] = None, hours: int = 24
         ):
             """알림 조회"""
             since = datetime.now() - timedelta(hours=hours)
             level_enum = AlertLevel(level) if level else None
-            
-            alerts = alert_manager.get_alert_history(
-                level=level_enum,
-                source=source,
-                since=since
-            )
-            
+
+            alerts = alert_manager.get_alert_history(level=level_enum, source=source, since=since)
+
             return {
                 "alerts": [a.to_dict() for a in alerts],
-                "summary": alert_manager.get_alert_summary()
+                "summary": alert_manager.get_alert_summary(),
             }
-        
+
         @self.app.get("/api/system")
         async def get_system_info():
             """시스템 정보"""
-            from dropshipping.scheduler.main import MainScheduler
-            
+
             # 스케줄러 정보 (있다면)
             scheduler_info = {}
             try:
                 # 글로벌 스케줄러 인스턴스가 있다면
-                if hasattr(self, '_scheduler'):
+                if hasattr(self, "_scheduler"):
                     scheduler_info = self._scheduler.scheduler.get_schedule_summary()
             except:
                 pass
-            
+
             return {
                 "timestamp": datetime.now().isoformat(),
                 "metrics": global_metrics.get_summary(),
                 "alerts": alert_manager.get_alert_summary(),
-                "scheduler": scheduler_info
+                "scheduler": scheduler_info,
             }
-        
+
         @self.app.websocket("/ws")
         async def websocket_endpoint(websocket: WebSocket):
             """웹소켓 엔드포인트"""
             await websocket.accept()
             self.websockets.append(websocket)
-            
+
             try:
                 while True:
                     # 클라이언트 메시지 대기
                     data = await websocket.receive_text()
                     # 필요시 메시지 처리
-                    
+
             except WebSocketDisconnect:
                 self.websockets.remove(websocket)
-    
+
     async def _broadcast_updates(self):
         """실시간 업데이트 브로드캐스트"""
         while True:
             try:
                 # 30초마다 업데이트
                 await asyncio.sleep(30)
-                
+
                 # 현재 상태
                 update = {
                     "type": "update",
                     "timestamp": datetime.now().isoformat(),
                     "metrics": global_metrics.get_summary(),
                     "recent_alerts": [
-                        a.to_dict() 
-                        for a in alert_manager.get_alert_history(limit=5)
-                    ]
+                        a.to_dict() for a in alert_manager.get_alert_history(limit=5)
+                    ],
                 }
-                
+
                 # 모든 웹소켓으로 전송
                 disconnected = []
                 for ws in self.websockets:
@@ -131,14 +120,14 @@ class DashboardServer:
                         await ws.send_json(update)
                     except:
                         disconnected.append(ws)
-                
+
                 # 연결 끊긴 소켓 제거
                 for ws in disconnected:
                     self.websockets.remove(ws)
-                    
+
             except Exception as e:
                 logger.error(f"브로드캐스트 오류: {str(e)}")
-    
+
     def _get_dashboard_html(self) -> str:
         """대시보드 HTML"""
         return """
@@ -463,23 +452,23 @@ class DashboardServer:
 </body>
 </html>
 """
-    
+
     def start(self):
         """서버 시작"""
         # 백그라운드 태스크 시작
         self._update_task = asyncio.create_task(self._broadcast_updates())
-        
+
         # 서버 시작
         logger.info(f"대시보드 서버 시작: http://{self.host}:{self.port}")
         uvicorn.run(self.app, host=self.host, port=self.port)
-    
+
     async def stop(self):
         """서버 중지"""
         if self._update_task:
             self._update_task.cancel()
-            
+
         # 모든 웹소켓 연결 종료
         for ws in self.websockets:
             await ws.close()
-        
+
         logger.info("대시보드 서버 중지됨")

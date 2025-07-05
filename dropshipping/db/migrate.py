@@ -3,17 +3,15 @@
 JSONStorage에서 Supabase로 데이터 이전
 """
 
-import click
-from pathlib import Path
-from typing import Optional
 from datetime import datetime
+from typing import Optional
 
+import click
 from loguru import logger
 from tqdm import tqdm
 
 from dropshipping.storage.json_storage import JSONStorage
 from dropshipping.storage.supabase_storage import SupabaseStorage
-from dropshipping.config import settings
 
 
 class DataMigrator:
@@ -57,7 +55,9 @@ class DataMigrator:
         # 3. 결과 출력
         duration = (datetime.now() - start_time).total_seconds()
         logger.info(f"마이그레이션 완료 (소요시간: {duration:.1f}초)")
-        logger.info(f"원본 데이터: {self.stats['raw_migrated']}개 성공, {self.stats['raw_failed']}개 실패")
+        logger.info(
+            f"원본 데이터: {self.stats['raw_migrated']}개 성공, {self.stats['raw_failed']}개 실패"
+        )
         logger.info(
             f"처리된 데이터: {self.stats['processed_migrated']}개 성공, {self.stats['processed_failed']}개 실패"
         )
@@ -123,11 +123,17 @@ class DataMigrator:
                         continue
 
                     # Supabase에서 raw_id 조회
-                    supabase_raw = self.supabase_storage.client.table("products_raw").select(
-                        "id"
-                    ).eq("supplier_id", self.supabase_storage._get_supplier_id(
-                        raw_record["supplier_id"]
-                    )).eq("data_hash", raw_record["data_hash"]).single().execute()
+                    supabase_raw = (
+                        self.supabase_storage.client.table("products_raw")
+                        .select("id")
+                        .eq(
+                            "supplier_id",
+                            self.supabase_storage._get_supplier_id(raw_record["supplier_id"]),
+                        )
+                        .eq("data_hash", raw_record["data_hash"])
+                        .single()
+                        .execute()
+                    )
 
                     if not supabase_raw.data:
                         logger.warning(f"Supabase에서 원본 데이터를 찾을 수 없습니다: {raw_id}")
@@ -149,7 +155,9 @@ class DataMigrator:
 
         # JSON 저장소 통계
         json_stats = self.json_storage.get_stats()
-        logger.info(f"JSON Storage - 원본: {json_stats['total_raw']}, 처리됨: {json_stats['total_processed']}")
+        logger.info(
+            f"JSON Storage - 원본: {json_stats['total_raw']}, 처리됨: {json_stats['total_processed']}"
+        )
 
         # Supabase 통계
         supabase_stats = self.supabase_storage.get_stats()

@@ -2,29 +2,24 @@
 쿠팡 API 업로더
 """
 
-import hmac
-import hashlib
 import base64
+import hashlib
+import hmac
 import time
-import requests
-from datetime import datetime
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
+import requests
 from loguru import logger
 
-from dropshipping.uploader.base import BaseUploader, MarketplaceType, UploadStatus
 from dropshipping.models.product import StandardProduct
 from dropshipping.storage.base import BaseStorage
+from dropshipping.uploader.base import BaseUploader, MarketplaceType
 
 
 class CoupangUploader(BaseUploader):
     """쿠팡 API를 통한 상품 업로드 및 관리"""
 
-    def __init__(
-        self,
-        storage: BaseStorage,
-        config: Optional[Dict[str, Any]] = None
-    ):
+    def __init__(self, storage: BaseStorage, config: Optional[Dict[str, Any]] = None):
         super().__init__(MarketplaceType.COUPANG, storage, config)
         self.base_url = "https://api-gateway.coupang.com"
         self.vendor_id = self.config.get("vendor_id")
@@ -119,7 +114,7 @@ class CoupangUploader(BaseUploader):
         """
         # 쿠팡 카테고리 매핑 (예시)
         # 실제로는 CategoryMapper를 통해 DB에서 가져와야 함
-        coupang_category_code = "194176" # 예시: 여성패션
+        coupang_category_code = "194176"  # 예시: 여성패션
         if product.category_code:
             # TODO: CategoryMapper를 사용하여 실제 매핑 로직 구현
             pass
@@ -127,39 +122,42 @@ class CoupangUploader(BaseUploader):
         # 이미지 변환
         images = []
         for i, img in enumerate(product.images):
-            images.append({
-                "vendorPath": img.url, # 외부 URL 직접 사용 (쿠팡 정책에 따라 다를 수 있음)
-                "displayOrder": i + 1,
-                "imageType": "DETAIL" if not img.is_main else "REPRESENTATIVE"
-            })
+            images.append(
+                {
+                    "vendorPath": img.url,  # 외부 URL 직접 사용 (쿠팡 정책에 따라 다를 수 있음)
+                    "displayOrder": i + 1,
+                    "imageType": "DETAIL" if not img.is_main else "REPRESENTATIVE",
+                }
+            )
 
         # 옵션 변환 (단일 옵션만 가정)
         options = []
         if product.options:
             for opt in product.options:
                 for val in opt.values:
-                    options.append({
-                        "attributes": [
-                            {
-                                "attributeTypeName": opt.name,
-                                "attributeValueName": val
-                            }
-                        ],
-                        "originalPrice": float(product.list_price or product.price),
-                        "salePrice": float(product.price),
-                        "stockQuantity": product.stock,
-                        "vendorItemCode": f"{product.supplier_product_id}-{opt.name}-{val}",
-                        "sellerProductItemName": f"{product.name} - {opt.name}: {val}"
-                    })
+                    options.append(
+                        {
+                            "attributes": [
+                                {"attributeTypeName": opt.name, "attributeValueName": val}
+                            ],
+                            "originalPrice": float(product.list_price or product.price),
+                            "salePrice": float(product.price),
+                            "stockQuantity": product.stock,
+                            "vendorItemCode": f"{product.supplier_product_id}-{opt.name}-{val}",
+                            "sellerProductItemName": f"{product.name} - {opt.name}: {val}",
+                        }
+                    )
         else:
             # 옵션이 없는 경우
-            options.append({
-                "originalPrice": float(product.list_price or product.price),
-                "salePrice": float(product.price),
-                "stockQuantity": product.stock,
-                "vendorItemCode": product.supplier_product_id,
-                "sellerProductItemName": product.name
-            })
+            options.append(
+                {
+                    "originalPrice": float(product.list_price or product.price),
+                    "salePrice": float(product.price),
+                    "stockQuantity": product.stock,
+                    "vendorItemCode": product.supplier_product_id,
+                    "sellerProductItemName": product.name,
+                }
+            )
 
         # 반품/교환 정보 (기본값)
         return_info = {
@@ -167,8 +165,8 @@ class CoupangUploader(BaseUploader):
             "exchangeCharge": 5000,
             "returnChargeDeliveryCompanyCode": "CJGLS",
             "returnChargeDeliveryCompany": "CJ대한통운",
-            "returnCenterCode": "12345", # 판매자 반품지 코드
-            "returnCenterName": "테스트 반품지"
+            "returnCenterCode": "12345",  # 판매자 반품지 코드
+            "returnCenterName": "테스트 반품지",
         }
 
         # 상품 등록 요청 본문 구성
@@ -182,21 +180,21 @@ class CoupangUploader(BaseUploader):
             "stockQuantity": product.stock,
             "deliveryCompanyCode": "CJGLS",
             "deliveryCompany": "CJ대한통운",
-            "deliveryChargeType": "FREE", # 무료배송
+            "deliveryChargeType": "FREE",  # 무료배송
             "deliveryCharge": 0,
-            "outboundShippingPlaceCode": "12345", # 판매자 출고지 코드
+            "outboundShippingPlaceCode": "12345",  # 판매자 출고지 코드
             "outboundShippingPlaceName": "테스트 출고지",
             "images": images,
             "items": options,
-            "productAttributes": [], # 추가 속성 (필요시 매핑)
-            "productCertifications": [], # 인증 정보 (필요시)
-            "productNotices": [], # 상품 고시 정보 (필요시)
+            "productAttributes": [],  # 추가 속성 (필요시 매핑)
+            "productCertifications": [],  # 인증 정보 (필요시)
+            "productNotices": [],  # 상품 고시 정보 (필요시)
             "returnInfo": return_info,
-            "sellerProductDescription": product.description or product.name, # 설명
-            "maximumBuyQuantity": 999, # 최대 구매 수량
-            "minimumBuyQuantity": 1, # 최소 구매 수량
-            "taxType": "TAX", # 과세 상품
-            "externalVendorId": product.supplier_id, # 외부 공급사 ID
+            "sellerProductDescription": product.description or product.name,  # 설명
+            "maximumBuyQuantity": 999,  # 최대 구매 수량
+            "minimumBuyQuantity": 1,  # 최소 구매 수량
+            "taxType": "TAX",  # 과세 상품
+            "externalVendorId": product.supplier_id,  # 외부 공급사 ID
         }
 
     async def upload_single(self, product_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -216,9 +214,7 @@ class CoupangUploader(BaseUploader):
             return {"success": False, "error": str(e)}
 
     async def update_single(
-        self,
-        marketplace_product_id: str,
-        product_data: Dict[str, Any]
+        self, marketplace_product_id: str, product_data: Dict[str, Any]
     ) -> Dict[str, Any]:
         """
         단일 상품 수정 (재고, 가격 등)
@@ -226,11 +222,11 @@ class CoupangUploader(BaseUploader):
         # 쿠팡은 상품 수정 API가 복잡하므로, 여기서는 재고/가격만 예시
         # 실제로는 아이템 단위로 수정해야 함
         path = f"/v2/providers/seller_api/apis/api/v1/marketplace/seller-products/{marketplace_product_id}/items"
-        
+
         # 재고 및 가격 정보만 업데이트하는 예시
         update_data = {
             "vendorId": self.vendor_id,
-            "items": product_data["items"] # items 필드만 사용
+            "items": product_data["items"],  # items 필드만 사용
         }
 
         try:

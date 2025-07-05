@@ -3,16 +3,19 @@
 requests 라이브러리를 사용하여 API와 통신
 """
 
-import requests
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
 
+import requests
 from loguru import logger
 
 from dropshipping.config import settings
 
+
 class DomemeAPIError(Exception):
     """도매매 API 오류"""
+
     pass
+
 
 class DomemeClient:
     """도매매 API 클라이언트"""
@@ -63,7 +66,7 @@ class DomemeClient:
     def search_products(self, **kwargs) -> Dict[str, Any]:
         """상품 목록 검색"""
         endpoint = "api/rest/product/searchProductList"
-        
+
         # API 파라미터 준비
         params = {
             "market": "supply",  # 공급 상품
@@ -75,9 +78,9 @@ class DomemeClient:
         }
         if "categoryCode" in kwargs:
             params["categoryCode"] = kwargs["categoryCode"]
-        
+
         data = self._request(endpoint, params)
-        
+
         # 결과 파싱
         products = data.get("product", [])
         total_count = int(data.get("totalCount", 0))
@@ -89,7 +92,7 @@ class DomemeClient:
         """상품 상세 정보 조회"""
         endpoint = "api/rest/product/searchProductInfo"
         params = {"productNo": product_id, "ver": "4.5", "market": "supply"}
-        
+
         data = self._request(endpoint, params)
-        
+
         return data.get("product", {})

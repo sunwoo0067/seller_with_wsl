@@ -2,15 +2,15 @@
 Fetcher 클래스들의 테스트
 """
 
-import pytest
-from unittest.mock import Mock, patch, MagicMock
 from datetime import datetime, timedelta
-from typing import Dict, Any, List
+from unittest.mock import Mock, patch
 
-from dropshipping.suppliers.base.base_fetcher import BaseFetcher, FetchError
-from dropshipping.suppliers.mock.mock_fetcher import MockFetcher
+import pytest
+
+from dropshipping.suppliers.base.base_fetcher import FetchError
+from dropshipping.suppliers.domeme.client import DomemeAPIError, DomemeClient
 from dropshipping.suppliers.domeme.fetcher import DomemeFetcher
-from dropshipping.suppliers.domeme.client import DomemeClient, DomemeAPIError
+from dropshipping.suppliers.mock.mock_fetcher import MockFetcher
 from dropshipping.transformers.domeme import DomemeTransformer
 
 
@@ -29,7 +29,7 @@ class TestBaseFetcher:
         """MockFetcher 첫 페이지 조회 테스트"""
         fetcher = MockFetcher()
         products, has_next = fetcher.fetch_list(page=1)
-        
+
         assert len(products) == 10  # 페이지당 10개
         assert has_next is True  # 다음 페이지 존재
         assert products[0]["productNo"] == "MOCK0001"
@@ -39,7 +39,7 @@ class TestBaseFetcher:
         """MockFetcher 마지막 페이지 조회 테스트"""
         fetcher = MockFetcher()
         products, has_next = fetcher.fetch_list(page=5)  # 50개 상품 / 10개 = 5페이지
-        
+
         assert len(products) == 10
         assert has_next is False  # 마지막 페이지
         assert products[0]["productNo"] == "MOCK0041"
@@ -48,7 +48,7 @@ class TestBaseFetcher:
         """MockFetcher 상세 조회 테스트"""
         fetcher = MockFetcher()
         detail = fetcher.fetch_detail("MOCK0001")
-        
+
         assert detail["productNo"] == "MOCK0001"
         assert "detailHtml" in detail
         assert "keywords" in detail
@@ -60,40 +60,40 @@ class TestBaseFetcher:
         # 미래 날짜로 필터링 (결과가 없어야 함)
         future_date = datetime.now() + timedelta(days=1)
         products, has_next = fetcher.fetch_list(page=1, since=future_date)
-        
+
         assert len(products) == 0
 
     def test_hash_calculation(self):
         """데이터 해시 계산 테스트"""
         fetcher = MockFetcher()
-        
+
         data1 = {"productNo": "001", "name": "테스트"}
         data2 = {"name": "테스트", "productNo": "001"}  # 순서 다름
         data3 = {"productNo": "002", "name": "테스트"}
-        
+
         hash1 = fetcher.calculate_hash(data1)
         hash2 = fetcher.calculate_hash(data2)
         hash3 = fetcher.calculate_hash(data3)
-        
+
         assert hash1 == hash2  # 순서가 달라도 같은 해시
         assert hash1 != hash3  # 데이터가 다르면 다른 해시
 
     def test_stats_tracking(self):
         """통계 추적 테스트"""
         fetcher = MockFetcher()
-        
+
         # 초기 상태
         assert fetcher.stats["fetched"] == 0
         assert fetcher.stats["saved"] == 0
         assert fetcher.stats["duplicates"] == 0
         assert fetcher.stats["errors"] == 0
-        
+
         # 통계 증가
         fetcher._stats["fetched"] = 10
         fetcher._stats["saved"] = 8
         fetcher._stats["duplicates"] = 1
         fetcher._stats["errors"] = 1
-        
+
         stats = fetcher.stats
         assert stats["fetched"] == 10
         assert stats["saved"] == 8
@@ -117,7 +117,7 @@ class TestDomemeFetcher:
     def mock_domeme_client(self):
         """Mock DomemeClient"""
         client = Mock(spec=DomemeClient)
-        
+
         # 목록 조회 응답
         client.search_products.return_value = {
             "products": [
@@ -132,7 +132,7 @@ class TestDomemeFetcher:
                     "category1Name": "패션의류",
                     "mainImage": "https://example.com/image1.jpg",
                     "regDate": "2024-01-01",
-                    "updateDate": "2024-01-02"
+                    "updateDate": "2024-01-02",
                 },
                 {
                     "productNo": "DOM002",
@@ -145,153 +145,150 @@ class TestDomemeFetcher:
                     "category1Name": "패션잡화",
                     "mainImage": "https://example.com/image2.jpg",
                     "regDate": "2024-01-01",
-                    "updateDate": "2024-01-02"
-                }
+                    "updateDate": "2024-01-02",
+                },
             ],
             "total_count": 2,
-            "has_next": False
+            "has_next": False,
         }
-        
+
         # 상세 조회 응답
         client.get_product_detail.return_value = {
             "productNo": "DOM001",
             "detailHtml": "<p>상세 설명</p>",
             "option": "색상:빨강,파랑|사이즈:S,M,L",
             "addImg1": "https://example.com/add1.jpg",
-            "addImg2": "https://example.com/add2.jpg"
+            "addImg2": "https://example.com/add2.jpg",
         }
-        
+
         return client
 
     def test_domeme_fetcher_initialization(self, mock_storage):
         """DomemeFetcher 초기화 테스트"""
         fetcher = DomemeFetcher(storage=mock_storage, api_key="test_key")
-        
+
         assert fetcher.supplier_id == "domeme"
         assert fetcher.storage == mock_storage
         assert isinstance(fetcher.transformer, DomemeTransformer)
         assert len(fetcher.target_categories) == 10
 
-    @patch('dropshipping.suppliers.domeme.fetcher.DomemeClient')
+    @patch("dropshipping.suppliers.domeme.fetcher.DomemeClient")
     def test_fetch_list_success(self, mock_client_class, mock_storage, mock_domeme_client):
         """상품 목록 조회 성공 테스트"""
         mock_client_class.return_value = mock_domeme_client
-        
+
         fetcher = DomemeFetcher(storage=mock_storage, api_key="test_key")
         fetcher.client = mock_domeme_client
-        
+
         products, has_next = fetcher.fetch_list(page=1, category="001")
-        
+
         assert len(products) == 2
         assert has_next is False
         assert products[0]["productNo"] == "DOM001"
         assert products[1]["productNo"] == "DOM002"
-        
+
         # API 호출 확인
         mock_domeme_client.search_products.assert_called_once_with(
-            start_row=1,
-            end_row=100,
-            order_by="modDate",
-            sort_type="desc",
-            categoryCode="001"
+            start_row=1, end_row=100, order_by="modDate", sort_type="desc", categoryCode="001"
         )
 
-    @patch('dropshipping.suppliers.domeme.fetcher.DomemeClient')
-    def test_fetch_list_with_since_filter(self, mock_client_class, mock_storage, mock_domeme_client):
+    @patch("dropshipping.suppliers.domeme.fetcher.DomemeClient")
+    def test_fetch_list_with_since_filter(
+        self, mock_client_class, mock_storage, mock_domeme_client
+    ):
         """날짜 필터링 테스트"""
         mock_client_class.return_value = mock_domeme_client
-        
+
         fetcher = DomemeFetcher(storage=mock_storage, api_key="test_key")
         fetcher.client = mock_domeme_client
-        
+
         # 미래 날짜로 필터링
         since_date = datetime(2024, 12, 31)
         products, has_next = fetcher.fetch_list(page=1, since=since_date)
-        
+
         # 모든 상품이 필터링되어야 함 (regDate가 2024-01-01)
         assert len(products) == 0
 
-    @patch('dropshipping.suppliers.domeme.fetcher.DomemeClient')
+    @patch("dropshipping.suppliers.domeme.fetcher.DomemeClient")
     def test_fetch_detail_success(self, mock_client_class, mock_storage, mock_domeme_client):
         """상품 상세 조회 성공 테스트"""
         mock_client_class.return_value = mock_domeme_client
-        
+
         fetcher = DomemeFetcher(storage=mock_storage, api_key="test_key")
         fetcher.client = mock_domeme_client
-        
+
         detail = fetcher.fetch_detail("DOM001")
-        
+
         assert detail["productNo"] == "DOM001"
         assert "detailHtml" in detail
         assert "option" in detail
-        
+
         mock_domeme_client.get_product_detail.assert_called_once_with("DOM001")
 
-    @patch('dropshipping.suppliers.domeme.fetcher.DomemeClient')
+    @patch("dropshipping.suppliers.domeme.fetcher.DomemeClient")
     def test_fetch_list_api_error(self, mock_client_class, mock_storage):
         """API 오류 처리 테스트"""
         mock_client = Mock(spec=DomemeClient)
         mock_client.search_products.side_effect = DomemeAPIError("API 오류")
         mock_client_class.return_value = mock_client
-        
+
         fetcher = DomemeFetcher(storage=mock_storage, api_key="test_key")
         fetcher.client = mock_client
-        
+
         with pytest.raises(FetchError) as exc_info:
             fetcher.fetch_list(page=1)
-        
+
         assert "도매매 API 오류" in str(exc_info.value)
 
-    @patch('dropshipping.suppliers.domeme.fetcher.DomemeClient')
+    @patch("dropshipping.suppliers.domeme.fetcher.DomemeClient")
     def test_needs_detail_fetch(self, mock_client_class, mock_storage):
         """상세 조회 필요 여부 판단 테스트"""
         mock_client_class.return_value = Mock()
-        
+
         fetcher = DomemeFetcher(storage=mock_storage, api_key="test_key")
-        
+
         # 상세 정보가 충분한 경우
         complete_item = {
             "description": "상세 설명",
             "addImg1": "image1.jpg",
-            "addImg2": "image2.jpg"
+            "addImg2": "image2.jpg",
         }
         assert fetcher.needs_detail_fetch(complete_item) is False
-        
+
         # 상세 정보가 부족한 경우
-        incomplete_item = {
-            "productNo": "DOM001",
-            "productName": "테스트 상품"
-        }
+        incomplete_item = {"productNo": "DOM001", "productName": "테스트 상품"}
         assert fetcher.needs_detail_fetch(incomplete_item) is True
 
-    @patch('dropshipping.suppliers.domeme.fetcher.DomemeClient')
-    def test_incremental_sync_single_category(self, mock_client_class, mock_storage, mock_domeme_client):
+    @patch("dropshipping.suppliers.domeme.fetcher.DomemeClient")
+    def test_incremental_sync_single_category(
+        self, mock_client_class, mock_storage, mock_domeme_client
+    ):
         """단일 카테고리 증분 동기화 테스트"""
         mock_client_class.return_value = mock_domeme_client
-        
+
         fetcher = DomemeFetcher(storage=mock_storage, api_key="test_key")
         fetcher.client = mock_domeme_client
-        
+
         since_date = datetime.now() - timedelta(days=1)
-        
+
         # 증분 동기화 실행
         fetcher.run_incremental(since=since_date, max_pages=1, category="001")
-        
+
         # 통계 확인
         assert fetcher.stats["fetched"] == 2
         assert fetcher.stats["saved"] == 2
-        
+
         # 저장소 호출 확인
         assert mock_storage.save_raw_product.call_count == 2
 
     def test_extract_product_id(self):
         """상품 ID 추출 테스트"""
         fetcher = DomemeFetcher(api_key="test_key")
-        
+
         product1 = {"productNo": "DOM001", "name": "테스트"}
         product2 = {"id": "DOM002", "name": "테스트"}
         product3 = {"name": "테스트"}
-        
+
         assert fetcher.extract_product_id(product1) == "DOM001"
         assert fetcher.extract_product_id(product2) == "DOM002"
         assert fetcher.extract_product_id(product3) == ""
@@ -303,39 +300,40 @@ class TestFetchWithRetry:
     def test_fetch_with_retry_success(self):
         """재시도 성공 테스트"""
         fetcher = MockFetcher()
-        
+
         def mock_fetch_func():
             return {"success": True}
-        
+
         result = fetcher.fetch_with_retry(mock_fetch_func)
         assert result["success"] is True
 
     def test_fetch_with_retry_failure(self):
         """재시도 실패 테스트"""
         fetcher = MockFetcher()
-        
+
         def mock_fetch_func():
             raise Exception("API 오류")
-        
+
         with pytest.raises(FetchError) as exc_info:
             fetcher.fetch_with_retry(mock_fetch_func)
-        
+
         assert "Fetch 실패" in str(exc_info.value)
 
-    @patch('time.sleep')
+    @patch("time.sleep")
     def test_fetch_with_retry_partial_failure(self, mock_sleep):
         """부분 실패 후 성공 테스트"""
         fetcher = MockFetcher()
-        
+
         call_count = 0
+
         def mock_fetch_func():
             nonlocal call_count
             call_count += 1
             if call_count < 3:
                 raise Exception("임시 오류")
             return {"success": True}
-        
+
         result = fetcher.fetch_with_retry(mock_fetch_func)
         assert result["success"] is True
         assert call_count == 3
-        assert mock_sleep.call_count == 2  # 2번 재시도 
+        assert mock_sleep.call_count == 2  # 2번 재시도

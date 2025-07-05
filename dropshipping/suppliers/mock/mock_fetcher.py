@@ -4,11 +4,11 @@
 """
 
 from datetime import datetime
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Any, Dict, List, Tuple
 
+from dropshipping.models.product import ProductStatus
 from dropshipping.suppliers.base.base_fetcher import BaseFetcher
 from dropshipping.tests.fixtures.mock_data import MockDataGenerator
-from dropshipping.models.product import ProductStatus
 
 
 class MockFetcher(BaseFetcher):

@@ -4,12 +4,11 @@
 """
 
 from datetime import datetime, timedelta
-from typing import Dict, Any, List, Optional
+from typing import Any, Dict, List
 
 from loguru import logger
 
 from dropshipping.storage.base import BaseStorage
-from dropshipping.models.product import StandardProduct
 
 
 class SalesSynchronizer:
@@ -21,7 +20,7 @@ class SalesSynchronizer:
     async def sync_sales_data(self, lookback_days: int = 30):
         """
         지정된 기간 동안의 판매 데이터를 동기화합니다.
-        
+
         Args:
             lookback_days: 과거 몇 일까지의 데이터를 동기화할지 지정합니다.
         """
@@ -32,13 +31,7 @@ class SalesSynchronizer:
 
         # 모든 주문 데이터 가져오기
         orders = await self.storage.list(
-            "orders",
-            filters={
-                "order_date": {
-                    "$gte": start_date,
-                    "$lte": end_date
-                }
-            }
+            "orders", filters={"order_date": {"$gte": start_date, "$lte": end_date}}
         )
 
         if not orders:
@@ -51,7 +44,9 @@ class SalesSynchronizer:
 
         logger.info(f"판매 데이터 동기화 완료. {len(sales_records)}개 상품 업데이트.")
 
-    def _aggregate_sales_from_orders(self, orders: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
+    def _aggregate_sales_from_orders(
+        self, orders: List[Dict[str, Any]]
+    ) -> Dict[str, Dict[str, Any]]:
         """주문 데이터로부터 판매 상품 데이터를 집계합니다."""
         aggregated_sales = {}
 
@@ -66,7 +61,9 @@ class SalesSynchronizer:
                     continue
 
                 # 상품 정보 조회 (캐시 또는 DB)
-                product = self.storage.get_processed_product(product_id) # StandardProduct 객체 반환
+                product = self.storage.get_processed_product(
+                    product_id
+                )  # StandardProduct 객체 반환
                 if not product:
                     logger.warning(f"상품 정보를 찾을 수 없습니다: {product_id}")
                     continue
@@ -81,13 +78,19 @@ class SalesSynchronizer:
                         "total_sales_revenue": Decimal("0"),
                         "last_sale_date": datetime.min,
                         "first_sale_date": datetime.max,
-                        "product_snapshot": product.model_dump_json(), # 상품 스냅샷 저장
+                        "product_snapshot": product.model_dump_json(),  # 상품 스냅샷 저장
                     }
 
                 aggregated_sales[key]["total_sales_quantity"] += item.get("quantity", 0)
-                aggregated_sales[key]["total_sales_revenue"] += Decimal(str(item.get("total_amount", 0)))
-                aggregated_sales[key]["last_sale_date"] = max(aggregated_sales[key]["last_sale_date"], order_date)
-                aggregated_sales[key]["first_sale_date"] = min(aggregated_sales[key]["first_sale_date"], order_date)
+                aggregated_sales[key]["total_sales_revenue"] += Decimal(
+                    str(item.get("total_amount", 0))
+                )
+                aggregated_sales[key]["last_sale_date"] = max(
+                    aggregated_sales[key]["last_sale_date"], order_date
+                )
+                aggregated_sales[key]["first_sale_date"] = min(
+                    aggregated_sales[key]["first_sale_date"], order_date
+                )
 
         return aggregated_sales
 
@@ -103,7 +106,13 @@ class SalesSynchronizer:
 
         if records_to_save:
             # upsert를 사용하여 기존 레코드를 업데이트하거나 새로 생성
-            await self.storage.upsert("sales_products", records_to_save, on_conflict="product_id,marketplace_id,account_id")
-            logger.info(f"{len(records_to_save)}개의 판매 기록을 sales_products 테이블에 저장/업데이트했습니다.")
+            await self.storage.upsert(
+                "sales_products",
+                records_to_save,
+                on_conflict="product_id,marketplace_id,account_id",
+            )
+            logger.info(
+                f"{len(records_to_save)}개의 판매 기록을 sales_products 테이블에 저장/업데이트했습니다."
+            )
         else:
             logger.info("저장할 판매 기록이 없습니다.")

@@ -4,12 +4,12 @@ BaseFetcher를 상속받아 도매매 특화 기능 구현
 """
 
 from datetime import datetime, timedelta
-from typing import Dict, Any, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from loguru import logger
 
 from dropshipping.suppliers.base.base_fetcher import BaseFetcher, FetchError
-from dropshipping.suppliers.domeme.client import DomemeClient, DomemeAPIError
+from dropshipping.suppliers.domeme.client import DomemeAPIError, DomemeClient
 from dropshipping.transformers.domeme import DomemeTransformer
 
 

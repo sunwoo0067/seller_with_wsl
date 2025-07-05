@@ -3,20 +3,20 @@
 """
 
 import random
-from datetime import datetime, timedelta
+from datetime import datetime
 from decimal import Decimal
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict, List, Optional
+
 from faker import Faker
 
 from dropshipping.models.product import (
-    StandardProduct,
+    OptionType,
     ProductImage,
     ProductOption,
-    ProductVariant,
     ProductStatus,
-    OptionType,
+    ProductVariant,
+    StandardProduct,
 )
-
 
 fake = Faker("ko_KR")
 

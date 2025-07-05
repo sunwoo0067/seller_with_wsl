@@ -38,6 +38,9 @@ pytest --cov=dropshipping      # 커버리지 포함 테스트
 pytest tests/test_specific.py  # 특정 테스트 파일 실행
 pytest -k "test_name"          # 특정 테스트 함수 실행
 pytest -s                      # print 출력 포함 테스트
+pytest -x                      # 첫 실패시 중단
+pytest --lf                    # 마지막 실패한 테스트만 재실행
+pytest --maxfail=2             # 2개 실패시 중단
 
 # Code Quality
 black dropshipping tests        # 코드 포맷팅
@@ -48,6 +51,12 @@ ruff check --fix               # 자동 수정 가능한 린트 오류 수정
 # Database
 python db/migrate.py           # 스키마 마이그레이션
 python db/seed_data.py         # 시드 데이터 로드
+
+# CLI Commands (main.py)
+python -m dropshipping.main fetch --supplier domeme --dry-run    # 공급사 상품 수집 (테스트 모드)
+python -m dropshipping.main upload --marketplace coupang --account <id>  # 마켓 업로드
+python -m dropshipping.main process                              # AI 처리 파이프라인
+python -m dropshipping.main schedule                             # 스케줄러 실행
 ```
 
 ## Architecture
@@ -88,7 +97,7 @@ dropshipping/
 ├── domain/            # Business logic (pricing, validation)
 ├── mcp/              # Model Context Protocol tools
 ├── db/               # Database management
-│   ├── schema.sql    # PostgreSQL schema (16 tables)
+│   ├── schema.sql    # PostgreSQL schema (16 tables with RLS policies)
 │   ├── seed_data.sql # Initial data
 │   └── migrate.py    # Migration tool
 └── tests/            # Comprehensive test suite
@@ -108,6 +117,8 @@ dropshipping/
 - `BaseAIProcessor`: AI processing pipeline interface
 - `StandardProduct`: Common data model for all products
 - `ModelRouter`: Selects optimal AI model based on task/budget
+- `SupplierRegistry`: Dynamic supplier registration system
+- `UploaderRegistry`: Dynamic marketplace uploader registration
 
 ## Common Tasks
 
@@ -116,7 +127,7 @@ dropshipping/
 2. Implement `fetcher.py` inheriting from `BaseFetcher`
 3. Implement `transformer.py` inheriting from `BaseTransformer`
 4. Add tests in `tests/suppliers/test_new_supplier.py`
-5. Register in `config.py` SUPPLIERS list
+5. Register in `suppliers/registry.py` using `@SupplierRegistry.register()`
 
 ### Adding a New Marketplace
 1. Create `dropshipping/uploader/new_marketplace.py`
@@ -124,6 +135,7 @@ dropshipping/
 3. Implement required methods: `upload_product()`, `check_upload_status()`
 4. Add marketplace config to `.env`
 5. Add tests in `tests/uploader/test_new_marketplace.py`
+6. Register in `uploader/registry.py` using `@UploaderRegistry.register()`
 
 ### Debugging Tips
 - Check logs in `logs/` directory (loguru rotating files)
@@ -134,6 +146,9 @@ dropshipping/
 
 ## Environment Variables (.env)
 ```bash
+# Environment
+ENVIRONMENT=development  # development, staging, production, test
+
 # Database
 SUPABASE_URL=https://xxx.supabase.co
 SUPABASE_KEY=your-anon-key
@@ -142,18 +157,28 @@ SUPABASE_KEY=your-anon-key
 OPENAI_API_KEY=sk-xxx
 GEMINI_API_KEY=xxx
 OLLAMA_HOST=http://localhost:11434
+AI_MAX_MONTHLY_BUDGET=1000
+AI_MAX_COST_PER_ITEM=0.1
 
 # Suppliers
 DOMEME_API_KEY=xxx
 OWNERCLAN_TOKEN=xxx
+ZENTRADE_FTP_USER=xxx
+ZENTRADE_FTP_PASS=xxx
 
 # Marketplaces
 COUPANG_ACCESS_KEY=xxx
 COUPANG_SECRET_KEY=xxx
 ELEVENST_API_KEY=xxx
+SMARTSTORE_CLIENT_ID=xxx
+SMARTSTORE_CLIENT_SECRET=xxx
 
 # Monitoring
 SLACK_WEBHOOK_URL=https://hooks.slack.com/xxx
+
+# Processing
+BATCH_SIZE=100
+MAX_CONCURRENT_REQUESTS=10
 ```
 
 ## Testing Strategy
@@ -162,6 +187,16 @@ SLACK_WEBHOOK_URL=https://hooks.slack.com/xxx
 - **Fixtures**: Common test data in `conftest.py`
 - **Test Isolation**: Each test runs in transaction, rolled back after
 - **Coverage Goal**: Maintain >80% coverage
+
+## Database Tables
+주요 테이블 구조:
+- **메타데이터**: suppliers, marketplaces, seller_accounts, ai_models
+- **상품**: products_raw, products_processed, product_variants, products_ai_enhanced
+- **마켓플레이스**: marketplace_listings
+- **비즈니스 규칙**: category_mappings, pricing_rules
+- **주문/재고**: orders, inventory_sync_logs
+- **소싱**: keyword_research, competitor_products
+- **시스템**: pipeline_logs
 
 ## Current Status
 - ✅ Core architecture implemented
@@ -174,9 +209,21 @@ SLACK_WEBHOOK_URL=https://hooks.slack.com/xxx
 - 🚧 Order management module in progress
 - 📋 Scheduler and monitoring planned
 
+## Configuration
+- **Settings Management**: Pydantic Settings 기반 (`config.py`)
+- **환경별 설정**: ENVIRONMENT 변수로 제어 (development, staging, production, test)
+- **Lazy Loading**: 필요한 설정만 선택적으로 로드
+- **설정 우선순위**: 환경변수 > .env 파일 > 기본값
+
 ## Troubleshooting
 - **Import Errors**: Run from project root, check `PYTHONPATH`
 - **Database Errors**: Verify Supabase connection, run migrations
 - **API Rate Limits**: Implement exponential backoff, use batch operations
 - **Memory Issues**: Process in chunks, use generators for large datasets
 - **Async Errors**: Use `asyncio.run()` for standalone scripts
+- **Registry Errors**: Check proper decorator usage (`@SupplierRegistry.register()`)
+
+## Development Tools
+- **Poetry Support**: `pyproject.toml` 파일 있음 (pip와 병행 사용 가능)
+- **Pre-commit Hooks**: 코드 품질 자동 검사
+- **Python Version**: 3.11+ 필수

@@ -2,17 +2,17 @@
 데이터 모델 단위 테스트
 """
 
-import pytest
 from decimal import Decimal
-from datetime import datetime
+
+import pytest
 
 from dropshipping.models.product import (
-    StandardProduct,
+    OptionType,
     ProductImage,
     ProductOption,
-    ProductVariant,
     ProductStatus,
-    OptionType,
+    ProductVariant,
+    StandardProduct,
 )
 from dropshipping.tests.fixtures.mock_data import MockDataGenerator
 

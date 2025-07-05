@@ -2,11 +2,12 @@
 상품 검증기 테스트
 """
 
-import pytest
 from datetime import datetime
 
-from dropshipping.domain.validator import ProductValidator, ValidationResult
-from dropshipping.models.product import StandardProduct, ProductStatus, ProductImage, ProductOption
+import pytest
+
+from dropshipping.domain.validator import ProductValidator
+from dropshipping.models.product import ProductImage, ProductStatus, StandardProduct
 
 
 class TestProductValidator:

@@ -3,7 +3,7 @@
 """
 
 import os
-from pathlib import Path
+
 import pytest
 
 from dropshipping.config import Settings, get_settings
