@@ -1,404 +1,131 @@
-"""
-가격 계산 모듈
-마진율, 고정비용, 배송비 등을 고려한 판매가 계산
-"""
-
-from dataclasses import dataclass
+from typing import Dict, Any, List
 from decimal import Decimal
-from enum import Enum
-from typing import Any, Dict, List, Optional
 
-from loguru import logger
+from dropshipping.storage.supabase_storage import SupabaseStorage
 
-from dropshipping.storage.base import BaseStorage
+class PricingEngine:
+    """
+    가격 책정 규칙을 적용하여 상품의 최종 가격을 계산하는 엔진.
+    """
 
+    def __init__(self, storage: SupabaseStorage):
+        self.storage = storage
+        self._rules = []
+        self._load_rules()
 
-class PricingMethod(Enum):
-    """가격 책정 방식"""
+    def _load_rules(self):
+        """
+        Supabase에서 모든 가격 책정 규칙을 로드하여 캐시합니다.
+        우선순위(priority)가 높은 규칙부터 적용됩니다.
+        """
+        self._rules = self.storage.get_pricing_rules(active_only=True)
+        print(f"Loaded pricing rules: {self._rules}")
+        # 규칙은 이미 priority 내림차순으로 정렬되어 로드됨
 
-    MARGIN_RATE = "margin_rate"  # 마진율 기반
-    FIXED_MARGIN = "fixed_margin"  # 고정 마진
-    COMPETITIVE = "competitive"  # 경쟁가 기반
-    COST_PLUS = "cost_plus"  # 원가 + 고정비
+    def apply_pricing(self, cost: Decimal, product_data: Dict[str, Any]) -> Decimal:
+        """
+        주어진 원가와 상품 데이터를 기반으로 최종 판매 가격을 계산합니다.
+        가장 먼저 일치하는 규칙이 적용됩니다.
+        """
+        for rule in self._rules:
+            if self._match_rule(rule, cost, product_data):
+                print(f"Applying rule: {rule.get('name')}, round_to: {rule.get('round_to')}")
+                return self._calculate_price_by_rule(cost, rule)
+        
+        # 일치하는 규칙이 없으면 기본 규칙 (priority=0)이 적용될 것임
+        # 만약 기본 규칙도 없다면 에러 또는 기본값 반환
+        raise ValueError("No matching pricing rule found.")
 
+    def _match_rule(self, rule: Dict[str, Any], cost: Decimal, product_data: Dict[str, Any]) -> bool:
+        """
+        규칙의 조건을 상품 데이터와 비교하여 일치 여부를 판단합니다.
+        """
+        conditions = rule.get('conditions', {})
 
-@dataclass
-class PricingRule:
-    """가격 책정 규칙"""
+        # 원가 조건
+        min_cost = conditions.get('min_cost')
+        max_cost = conditions.get('max_cost')
+        if min_cost is not None and cost < Decimal(str(min_cost)): return False
+        if max_cost is not None and cost > Decimal(str(max_cost)): return False
 
-    name: str
-    method: PricingMethod
-    priority: int = 0  # 우선순위 (높을수록 먼저 적용)
+        # 카테고리 조건
+        category_codes = conditions.get('category_codes')
+        if category_codes and product_data.get('category_code') not in category_codes: return False
 
-    # 조건
-    min_cost: Optional[Decimal] = None
-    max_cost: Optional[Decimal] = None
-    category_codes: Optional[List[str]] = None
-    supplier_ids: Optional[List[str]] = None
-
-    # 가격 책정 파라미터
-    margin_rate: Optional[Decimal] = None  # 마진율 (0.0 ~ 1.0)
-    fixed_margin: Optional[Decimal] = None  # 고정 마진액
-    min_margin_amount: Optional[Decimal] = None  # 최소 마진액
-    max_margin_amount: Optional[Decimal] = None  # 최대 마진액
-
-    # 추가 비용
-    platform_fee_rate: Decimal = Decimal("0.1")  # 플랫폼 수수료율
-    payment_fee_rate: Decimal = Decimal("0.03")  # 결제 수수료율
-    packaging_cost: Decimal = Decimal("1000")  # 포장비
-    handling_cost: Decimal = Decimal("500")  # 처리비용
-
-    # 가격 조정
-    round_to: int = 100  # 반올림 단위
-    price_ending: Optional[int] = None  # 가격 끝자리 (예: 900)
-
-    @classmethod
-    def from_db_record(cls, record: Dict[str, Any]) -> "PricingRule":
-        """DB 레코드로부터 PricingRule 객체 생성"""
-        conditions = record.get("conditions", {})
-        pricing_params = record.get("pricing_params", {})
-        additional_costs = record.get("additional_costs", {})
-
-        return cls(
-            name=record["name"],
-            method=PricingMethod(record["pricing_method"]),
-            priority=record.get("priority", 0),
-            min_cost=Decimal(str(conditions["min_cost"])) if "min_cost" in conditions else None,
-            max_cost=Decimal(str(conditions["max_cost"])) if "max_cost" in conditions else None,
-            category_codes=conditions.get("category_codes"),
-            supplier_ids=conditions.get("supplier_ids"),
-            margin_rate=(
-                Decimal(str(pricing_params["margin_rate"]))
-                if "margin_rate" in pricing_params
-                else None
-            ),
-            fixed_margin=(
-                Decimal(str(pricing_params["fixed_margin"]))
-                if "fixed_margin" in pricing_params
-                else None
-            ),
-            min_margin_amount=(
-                Decimal(str(pricing_params["min_margin_amount"]))
-                if "min_margin_amount" in pricing_params
-                else None
-            ),
-            max_margin_amount=(
-                Decimal(str(pricing_params["max_margin_amount"]))
-                if "max_margin_amount" in pricing_params
-                else None
-            ),
-            platform_fee_rate=Decimal(str(additional_costs.get("platform_fee_rate", "0.1"))),
-            payment_fee_rate=Decimal(str(additional_costs.get("payment_fee_rate", "0.03"))),
-            packaging_cost=Decimal(str(additional_costs.get("packaging_cost", "1000"))),
-            handling_cost=Decimal(str(additional_costs.get("handling_cost", "500"))),
-            round_to=record.get("round_to", 100),
-            price_ending=record.get("price_ending"),
-        )
-
-    def matches(self, product: Dict[str, Any]) -> bool:
-        """규칙이 상품에 적용되는지 확인"""
-        cost = Decimal(str(product.get("cost", 0)))
-
-        # 원가 범위 체크
-        if self.min_cost and cost < self.min_cost:
-            return False
-        if self.max_cost and cost > self.max_cost:
-            return False
-
-        # 카테고리 체크
-        if self.category_codes:
-            category = product.get("category_code", "")
-            if not any(category.startswith(code) for code in self.category_codes):
-                return False
-
-        # 공급사 체크
-        if self.supplier_ids:
-            supplier = product.get("supplier_id", "")
-            if supplier not in self.supplier_ids:
-                return False
+        # 공급사 조건
+        supplier_ids = conditions.get('supplier_ids')
+        if supplier_ids and product_data.get('supplier_id') not in supplier_ids: return False
 
         return True
 
-
-class PricingCalculator:
-    """가격 계산기"""
-
-    def __init__(self, storage: Optional[BaseStorage] = None):
-        self.storage = storage
-        self.rules: List[PricingRule] = []
-
-        if self.storage:
-            self.load_rules_from_db()
-        else:
-            self._setup_default_rules()
-
-    def load_rules_from_db(self):
-        """DB에서 가격 책정 규칙 로드"""
-        if not self.storage:
-            logger.warning("Storage가 설정되지 않아 DB에서 가격 규칙을 로드할 수 없습니다.")
-            return
-
-        rule_records = self.storage.get_pricing_rules(active_only=True)
-        self.rules = [PricingRule.from_db_record(rec) for rec in rule_records]
-        self.rules.sort(key=lambda r: r.priority, reverse=True)
-        logger.info(f"DB에서 {len(self.rules)}개의 가격 규칙을 로드했습니다.")
-
-    def _setup_default_rules(self):
-        """기본 가격 규칙 설정"""
-        # 저가 상품 규칙 (원가 1만원 미만)
-        self.add_rule(
-            PricingRule(
-                name="저가상품",
-                method=PricingMethod.MARGIN_RATE,
-                priority=10,
-                max_cost=Decimal("10000"),
-                margin_rate=Decimal("0.5"),  # 50% 마진
-                min_margin_amount=Decimal("2000"),  # 최소 2000원
-            )
-        )
-
-        # 중가 상품 규칙 (원가 1만원 ~ 5만원)
-        self.add_rule(
-            PricingRule(
-                name="중가상품",
-                method=PricingMethod.MARGIN_RATE,
-                priority=9,
-                min_cost=Decimal("10000"),
-                max_cost=Decimal("50000"),
-                margin_rate=Decimal("0.3"),  # 30% 마진
-                min_margin_amount=Decimal("3000"),  # 최소 3000원
-            )
-        )
-
-        # 고가 상품 규칙 (원가 5만원 이상)
-        self.add_rule(
-            PricingRule(
-                name="고가상품",
-                method=PricingMethod.MARGIN_RATE,
-                priority=8,
-                min_cost=Decimal("50000"),
-                margin_rate=Decimal("0.2"),  # 20% 마진
-                min_margin_amount=Decimal("10000"),  # 최소 10000원
-            )
-        )
-
-        # 기본 규칙 (모든 상품)
-        self.add_rule(
-            PricingRule(
-                name="기본규칙",
-                method=PricingMethod.COST_PLUS,
-                priority=0,
-                margin_rate=Decimal("0.25"),  # 25% 마진
-            )
-        )
-
-    def add_rule(self, rule: PricingRule):
-        """가격 규칙 추가"""
-        self.rules.append(rule)
-        # 우선순위 순으로 정렬
-        self.rules.sort(key=lambda r: r.priority, reverse=True)
-        logger.info(f"가격 규칙 추가: {rule.name}")
-
-    def calculate_price(self, product: Dict[str, Any]) -> Dict[str, Decimal]:
+    def _calculate_price_by_rule(self, cost: Decimal, rule: Dict[str, Any]) -> Decimal:
         """
-        상품 가격 계산
-
-        Args:
-            product: 상품 정보 (cost, shipping_fee 등 포함)
-
-        Returns:
-            계산된 가격 정보
+        일치하는 규칙에 따라 최종 가격을 계산합니다.
         """
-        # 기본 정보 추출
-        if "cost" not in product or product["cost"] is None:
-            raise ValueError("원가(cost) 정보가 없습니다")
+        pricing_method = rule.get('pricing_method')
+        pricing_params = rule.get('pricing_params', {})
+        additional_costs = rule.get('additional_costs', {})
 
-        try:
-            cost = Decimal(str(product["cost"]))
-            if cost <= 0:
-                raise ValueError("원가는 0보다 커야 합니다")
-        except (TypeError, ValueError, ArithmeticError):
-            raise ValueError(f"원가 형식이 올바르지 않습니다: {product.get('cost')}")
+        calculated_price = Decimal(str(cost))
 
-        shipping_fee = Decimal(str(product.get("shipping_fee", 0)))
+        if pricing_method == 'margin_rate':
+            margin_rate = Decimal(str(pricing_params.get('margin_rate', 0)))
+            min_margin_amount = Decimal(str(pricing_params.get('min_margin_amount', 0)))
+            
+            # 마진율 적용
+            calculated_price = cost / (Decimal('1') - margin_rate)
+            
+            # 최소 마진 금액 보장
+            if (calculated_price - cost) < min_margin_amount:
+                calculated_price = cost + min_margin_amount
 
-        # 적용할 규칙 찾기
-        rule = self._find_applicable_rule(product)
-        if not rule:
-            raise ValueError("적용 가능한 가격 규칙이 없습니다")
+        # 추가 비용 적용
+        packaging_cost = Decimal(str(additional_costs.get('packaging_cost', 0)))
+        handling_cost = Decimal(str(additional_costs.get('handling_cost', 0)))
+        calculated_price = calculated_price + packaging_cost + handling_cost
 
-        logger.debug(f"가격 규칙 적용: {rule.name}")
+        # 플랫폼 수수료 및 결제 수수료 역산
+        platform_fee_rate = Decimal(str(additional_costs.get('platform_fee_rate', 0)))
+        payment_fee_rate = Decimal(str(additional_costs.get('payment_fee_rate', 0)))
+        total_fee_rate = platform_fee_rate + payment_fee_rate
 
-        # 기본 판매가 계산
-        base_price = self._calculate_base_price(cost, rule)
+        if total_fee_rate >= 1: # 무한 루프 방지
+            raise ValueError("Total fee rate cannot be 100% or more.")
+        calculated_price = calculated_price / (Decimal('1') - total_fee_rate)
 
-        # 추가 비용 계산
-        additional_costs = self._calculate_additional_costs(base_price, rule)
+        # 가격 조정
+        round_to = rule.get('round_to')
+        if round_to:
+            calculated_price = self._round_price(calculated_price, Decimal(str(round_to)))
 
-        # 최종 가격 계산
-        final_price = base_price + additional_costs["total_additional"]
+        price_ending = rule.get('price_ending')
+        if price_ending is not None:
+            calculated_price = self._adjust_price_ending(calculated_price, price_ending)
 
-        # 마진 검증 및 조정
-        final_price = self._validate_margin(cost, final_price, rule)
+        return calculated_price.quantize(Decimal('1')) # 소수점 이하 버림
 
-        # 가격 반올림
-        final_price = self._round_price(final_price, rule)
+    def _round_price(self, price: Decimal, round_to: Decimal) -> Decimal:
+        """
+        가격을 지정된 단위로 반올림합니다.
+        예: 12345를 100단위로 반올림 -> 12300 또는 12400
+        """
+        return (price / round_to).quantize(Decimal('1')).to_integral_value() * round_to
 
-        # 추가 비용 재계산 (반올림 후)
-        additional_costs = self._calculate_additional_costs(final_price, rule)
-        total_cost = cost + additional_costs["total_additional"]
-
-        # 반올림 후 마진 재검증
-        actual_margin = final_price - total_cost
-        if rule.min_margin_amount and actual_margin < rule.min_margin_amount:
-            # 최소 마진을 보장하도록 가격 재조정
-            needed_price = total_cost + rule.min_margin_amount
-            # 반올림을 고려하여 가격 설정
-            if rule.round_to > 0:
-                # 반올림 단위로 올림
-                needed_price = ((needed_price + rule.round_to - 1) // rule.round_to) * rule.round_to
-            final_price = needed_price
-            # 추가 비용 최종 계산
-            additional_costs = self._calculate_additional_costs(final_price, rule)
-            total_cost = cost + additional_costs["total_additional"]
-
-        # 배송비 포함 총액
-        total_price = final_price + shipping_fee
-
-        # 실제 마진 계산
-        actual_margin = final_price - total_cost
-        actual_margin_rate = (actual_margin / final_price) if final_price > 0 else Decimal("0")
-
-        return {
-            "cost": cost,
-            "base_price": base_price,
-            "additional_costs": additional_costs["total_additional"],
-            "final_price": final_price,
-            "shipping_fee": shipping_fee,
-            "total_price": total_price,
-            "margin_amount": actual_margin,
-            "margin_rate": actual_margin_rate,
-            "applied_rule": rule.name,
-            "breakdown": {
-                "platform_fee": additional_costs["platform_fee"],
-                "payment_fee": additional_costs["payment_fee"],
-                "packaging_cost": additional_costs["packaging_cost"],
-                "handling_cost": additional_costs["handling_cost"],
-            },
-        }
-
-    def _find_applicable_rule(self, product: Dict[str, Any]) -> Optional[PricingRule]:
-        """적용 가능한 규칙 찾기"""
-        for rule in self.rules:
-            if rule.matches(product):
-                return rule
-        return None
-
-    def _calculate_base_price(self, cost: Decimal, rule: PricingRule) -> Decimal:
-        """기본 판매가 계산"""
-        if rule.method == PricingMethod.MARGIN_RATE:
-            # 마진율 기반
-            if rule.margin_rate:
-                base_price = cost / (1 - rule.margin_rate)
-            else:
-                base_price = cost * Decimal("1.3")  # 기본 30% 마진
-
-        elif rule.method == PricingMethod.FIXED_MARGIN:
-            # 고정 마진
-            margin = rule.fixed_margin or Decimal("5000")
-            base_price = cost + margin
-
-        elif rule.method == PricingMethod.COST_PLUS:
-            # 원가 + 고정비
-            margin_rate = rule.margin_rate or Decimal("0.25")
-            base_price = cost * (1 + margin_rate)
-
-        else:
-            # 기본값
-            base_price = cost * Decimal("1.3")
-
-        return base_price
-
-    def _calculate_additional_costs(
-        self, base_price: Decimal, rule: PricingRule
-    ) -> Dict[str, Decimal]:
-        """추가 비용 계산"""
-        platform_fee = base_price * rule.platform_fee_rate
-        payment_fee = base_price * rule.payment_fee_rate
-        packaging_cost = rule.packaging_cost
-        handling_cost = rule.handling_cost
-
-        total = platform_fee + payment_fee + packaging_cost + handling_cost
-
-        return {
-            "platform_fee": platform_fee,
-            "payment_fee": payment_fee,
-            "packaging_cost": packaging_cost,
-            "handling_cost": handling_cost,
-            "total_additional": total,
-        }
-
-    def _validate_margin(self, cost: Decimal, price: Decimal, rule: PricingRule) -> Decimal:
-        """마진 검증 및 조정"""
-        # 추가 비용을 고려한 총 원가
-        additional_costs = self._calculate_additional_costs(price, rule)
-        total_cost = cost + additional_costs["total_additional"]
-
-        # 실제 마진 = 판매가 - 총 원가
-        margin = price - total_cost
-
-        # 최소 마진 체크
-        if rule.min_margin_amount and margin < rule.min_margin_amount:
-            # 최소 마진을 보장하는 가격 계산
-            price = total_cost + rule.min_margin_amount
-            logger.debug(f"최소 마진 적용: {rule.min_margin_amount}")
-
-        # 최대 마진 체크
-        if rule.max_margin_amount:
-            margin = price - total_cost
-            if margin > rule.max_margin_amount:
-                price = total_cost + rule.max_margin_amount
-                logger.debug(f"최대 마진 적용: {rule.max_margin_amount}")
-
+    def _adjust_price_ending(self, price: Decimal, ending: int) -> Decimal:
+        """
+        가격의 끝자리를 지정된 숫자로 조정합니다.
+        예: 12345를 9로 조정 -> 12349
+        """
+        price_str = str(int(price))
+        if not price_str.endswith(str(ending)):
+            # 현재 끝자리를 제거하고 새로운 끝자리를 붙임
+            price_without_ending = price_str[:-len(str(ending))] if len(str(ending)) > 0 else price_str
+            return Decimal(price_without_ending + str(ending))
         return price
 
-    def _round_price(self, price: Decimal, rule: PricingRule) -> Decimal:
-        """가격 반올림"""
-        # 반올림 단위
-        round_to = rule.round_to
-        if round_to > 0:
-            price = (price // round_to) * round_to
-
-        # 끝자리 조정
-        if rule.price_ending is not None:
-            base = (price // 1000) * 1000
-            price = base + rule.price_ending
-
-        return price
-
-    def calculate_bulk_prices(self, products: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """여러 상품의 가격 일괄 계산"""
-        results = []
-
-        for product in products:
-            try:
-                pricing = self.calculate_price(product)
-                result = product.copy()
-                result.update(
-                    {
-                        "calculated_price": pricing["final_price"],
-                        "total_price": pricing["total_price"],
-                        "margin_amount": pricing["margin_amount"],
-                        "margin_rate": float(pricing["margin_rate"]),
-                        "pricing_details": pricing,
-                    }
-                )
-                results.append(result)
-
-            except Exception as e:
-                logger.error(f"가격 계산 실패 ({product.get('id', 'unknown')}): {str(e)}")
-                result = product.copy()
-                result["pricing_error"] = str(e)
-                results.append(result)
-
-        return results
+    def reload_rules(self):
+        """
+        캐시된 규칙 정보를 다시 로드합니다 (규칙 변경 시 호출).
+        """
+        self._rules = []
+        self._load_rules()

@@ -1,0 +1,22 @@
+{
+  "name": "last",
+  "version": "1.0.0",
+  "description": "여러 공급사의 상품을 수집하여 AI로 가공한 후 다중 마켓플레이스에 자동으로 업로드하는 완전 자동화 시스템입니다.",
+  "type": "module",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "example": "examples",
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.50.3",
+    "dotenv": "^17.0.1"
+  }
+}

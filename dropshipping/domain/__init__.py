@@ -4,12 +4,11 @@
 """
 
 from dropshipping.domain.category import CategoryMapper
-from dropshipping.domain.pricing import PricingCalculator, PricingRule
+from dropshipping.domain.pricing import PricingEngine
 from dropshipping.domain.validator import ProductValidator
 
 __all__ = [
-    "PricingCalculator",
-    "PricingRule",
+    "PricingEngine",
     "CategoryMapper",
     "ProductValidator",
 ]

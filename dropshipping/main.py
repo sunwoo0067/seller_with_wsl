@@ -12,13 +12,35 @@ def cli():
     pass
 
 
+from dropshipping.storage.supabase_storage import SupabaseStorage
+from dropshipping.suppliers.registry import SupplierRegistry
+
+
 @cli.command()
-@click.option("--supplier", help="공급사 이름 (domeme, ownerclan, zentrade)")
+@click.option("--supplier", required=True, help="공급사 이름 (domeme, ownerclan, zentrade)")
 @click.option("--dry-run", is_flag=True, help="실제 실행 없이 테스트만 수행")
 def fetch(supplier: str, dry_run: bool):
     """공급사로부터 상품 데이터 수집"""
     logger.info(f"상품 수집 시작: {supplier} (dry_run={dry_run})")
-    # TODO: Fetcher 구현 후 연결
+    
+    storage = SupabaseStorage()
+    registry = SupplierRegistry()
+    
+    try:
+        fetcher = registry.get_supplier(supplier, storage)
+        if dry_run:
+            logger.info(f"[Dry Run] {supplier} Fetcher가 성공적으로 로드되었습니다.")
+        else:
+            # TODO: supplier_id를 DB에서 가져오도록 수정 필요
+            fetcher.run_incremental(supplier_id=supplier)
+            
+    except ValueError as e:
+        logger.error(e)
+        return
+    except Exception as e:
+        logger.error(f"데이터 수집 중 예외 발생: {e}")
+        return
+
     logger.info("상품 수집 완료")
 
 

@@ -110,7 +110,7 @@ INSERT INTO pricing_rules (name, priority, conditions, pricing_method, pricing_p
 ('기본 규칙', 0,
  '{}',
  'margin_rate',
- '{"margin_rate": 0.25, "min_margin_amount": 2000}',
+ '{"margin_rate": 0.35, "min_margin_amount": 3000}', -- 원가 * 1.35 + 3000 반영
  '{"platform_fee_rate": 0.1, "payment_fee_rate": 0.03, "packaging_cost": 1000, "handling_cost": 500}',
  100, true);
 

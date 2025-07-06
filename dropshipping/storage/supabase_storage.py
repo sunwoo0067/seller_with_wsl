@@ -555,3 +555,84 @@ class SupabaseStorage(BaseStorage):
         except Exception as e:
             logger.error(f"Upsert failed for table {table_name}: {str(e)}")
             raise
+
+    def get_marketplace_upload(self, product_id: str, marketplace_id: str) -> Optional[Dict[str, Any]]:
+        """마켓플레이스 업로드 기록을 조회합니다."""
+        try:
+            marketplace_uuid = self._get_marketplace_id(marketplace_id)
+            if not marketplace_uuid:
+                return None
+
+            result = (
+                self.client.table("marketplace_uploads")
+                .select("*")
+                .eq("processed_product_id", product_id)
+                .eq("marketplace_id", marketplace_uuid)
+                .limit(1)
+                .execute()
+            )
+            return result.data[0] if result.data else None
+        except Exception as e:
+            logger.error(f"마켓플레이스 업로드 기록 조회 실패: {str(e)}")
+            return None
+
+    def save_marketplace_upload(self, record: Dict[str, Any]):
+        """마켓플레이스 업로드 기록을 저장합니다."""
+        try:
+            # Upsert를 사용하여 존재하면 업데이트, 없으면 삽입
+            result = (
+                self.client.table("marketplace_uploads")
+                .upsert(record, on_conflict="processed_product_id,marketplace_id")
+                .execute()
+            )
+            if not result.data:
+                raise ValueError("마켓플레이스 업로드 기록 저장 실패")
+            logger.debug(f"마켓플레이스 업로드 기록 저장: {result.data[0]['id']}")
+        except Exception as e:
+            logger.error(f"마켓플레이스 업로드 기록 저장 실패: {str(e)}")
+            raise
+
+    def get_all_category_mappings(self) -> List[Dict[str, Any]]:
+        """모든 카테고리 매핑 정보를 조회합니다."""
+        try:
+            result = self.client.table("category_mappings").select("*").execute()
+            return result.data
+        except Exception as e:
+            logger.error(f"전체 카테고리 매핑 조회 실패: {str(e)}")
+            return []
+
+    def get_supplier_code(self, supplier_id: str) -> str:
+        """공급사 ID로 코드를 조회합니다."""
+        # Check cache first
+        for code, uuid in self.supplier_id_cache.items():
+            if uuid == supplier_id:
+                return code
+        
+        try:
+            result = self.client.table("suppliers").select("code").eq("id", supplier_id).single().execute()
+            if result.data:
+                code = result.data['code']
+                self.supplier_id_cache[code] = supplier_id # Update cache
+                return code
+            raise ValueError(f"Supplier with ID {supplier_id} not found.")
+        except Exception as e:
+            logger.error(f"공급사 코드 조회 실패: {str(e)}")
+            raise
+
+    def get_marketplace_code(self, marketplace_id: str) -> str:
+        """마켓플레이스 ID로 코드를 조회합니다."""
+        # Check cache first
+        for code, uuid in self.marketplace_id_cache.items():
+            if uuid == marketplace_id:
+                return code
+        
+        try:
+            result = self.client.table("marketplaces").select("code").eq("id", marketplace_id).single().execute()
+            if result.data:
+                code = result.data['code']
+                self.marketplace_id_cache[code] = marketplace_id # Update cache
+                return code
+            raise ValueError(f"Marketplace with ID {marketplace_id} not found.")
+        except Exception as e:
+            logger.error(f"마켓플레이스 코드 조회 실패: {str(e)}")
+            raise

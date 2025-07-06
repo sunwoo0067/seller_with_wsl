@@ -28,10 +28,7 @@ class DomemeConfig(BaseSettings):
     """도매매 API 설정"""
 
     api_key: str = Field(..., env="DOMEME_API_KEY")
-    api_url: str = Field(
-        default="https://api.domeggook.com/open/v4.1/search/searchProductList.do",
-        env="DOMEME_API_URL",
-    )
+    api_url: str = Field(default="https://openapi.domeggook.com")
 
     model_config = ConfigDict(env_prefix="DOMEME_")
 
@@ -39,8 +36,9 @@ class DomemeConfig(BaseSettings):
 class OwnerclanConfig(BaseSettings):
     """오너클랜 API 설정"""
 
-    api_key: str = Field(..., env="OWNERCLAN_API_KEY")
-    api_url: str = Field(default="https://api.ownerclan.com/graphql", env="OWNERCLAN_API_URL")
+    username: str = Field(..., env="OWNERCLAN_USERNAME")
+    password: str = Field(..., env="OWNERCLAN_PASSWORD")
+    api_url: str = Field(default="https://api.ownerclan.com/v1/graphql", env="OWNERCLAN_API_URL")
 
     model_config = ConfigDict(env_prefix="OWNERCLAN_")
 
