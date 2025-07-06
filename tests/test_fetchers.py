@@ -7,7 +7,6 @@ from unittest.mock import Mock, patch
 
 import pytest
 
-from dropshipping.suppliers.base.base_fetcher import FetchError
 from dropshipping.suppliers.domeme.client import DomemeAPIError, DomemeClient
 from dropshipping.suppliers.domeme.fetcher import DomemeFetcher
 from dropshipping.suppliers.mock.mock_fetcher import MockFetcher
@@ -235,7 +234,7 @@ class TestDomemeFetcher:
         fetcher = DomemeFetcher(storage=mock_storage, api_key="test_key")
         fetcher.client = mock_client
 
-        with pytest.raises(FetchError) as exc_info:
+        with pytest.raises(DomemeAPIError) as exc_info:
             fetcher.fetch_list(page=1)
 
         assert "도매매 API 오류" in str(exc_info.value)
@@ -314,7 +313,7 @@ class TestFetchWithRetry:
         def mock_fetch_func():
             raise Exception("API 오류")
 
-        with pytest.raises(FetchError) as exc_info:
+        with pytest.raises(DomemeAPIError) as exc_info:
             fetcher.fetch_with_retry(mock_fetch_func)
 
         assert "Fetch 실패" in str(exc_info.value)

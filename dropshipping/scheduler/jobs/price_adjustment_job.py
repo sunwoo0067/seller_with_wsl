@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Optional
 
 from loguru import logger
 
-from dropshipping.domain.pricing import PricingRule
+from dropshipping.domain.pricing import PricingEngine
 from dropshipping.scheduler.base import BaseJob, JobPriority
 from dropshipping.sourcing.competitor_monitor import CompetitorMonitor
 from dropshipping.storage.base import BaseStorage

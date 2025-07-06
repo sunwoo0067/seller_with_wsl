@@ -2,7 +2,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from dropshipping.domain.pricing import PricingCalculator
+from dropshipping.domain.pricing import PricingEngine
 from dropshipping.storage.base import BaseStorage
 
 
@@ -35,19 +35,19 @@ def mock_storage():
     return storage
 
 
-class TestPricingCalculatorWithDB:
+class TestPricingEngineWithDB:
     """DB 연동 가격 계산기 테스트"""
 
     def test_calculator_loads_rules_from_db(self, mock_storage):
         """DB에서 가격 규칙을 성공적으로 로드하는지 테스트"""
-        calculator = PricingCalculator(storage=mock_storage)
+        calculator = PricingEngine(storage=mock_storage)
 
         assert len(calculator.rules) == 2
         assert calculator.rules[0].name == "DB 저가상품"
 
     def test_calculate_price_with_db_rule(self, mock_storage):
         """DB에서 로드한 규칙으로 가격을 계산하는지 테스트"""
-        calculator = PricingCalculator(storage=mock_storage)
+        calculator = PricingEngine(storage=mock_storage)
 
         # 저가 상품 (DB 규칙 적용 대상)
         product = {"cost": 5000, "shipping_fee": 3000}

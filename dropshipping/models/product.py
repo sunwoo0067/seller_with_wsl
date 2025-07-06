@@ -47,11 +47,29 @@ class ProductVariant(BaseModel):
     """상품 변형 (옵션 조합)"""
 
     sku: str = Field(..., description="변형 고유 코드")
-    options: Dict[str, str] = Field(..., description="옵션명: 옵션값 매핑")
+    name: Optional[str] = Field(None, description="변형 이름")
+    options: Dict[str, str] = Field(default_factory=dict, description="옵션명: 옵션값 매핑")
     price: Optional[Decimal] = Field(None, description="변형별 가격 (기본 가격과 다른 경우)")
+    price_adjustment: Optional[float] = Field(None, description="가격 조정액")
     stock: int = Field(default=0, description="재고 수량")
     status: ProductStatus = Field(default=ProductStatus.ACTIVE)
     barcode: Optional[str] = Field(None, description="바코드")
+    attributes: Dict[str, Any] = Field(default_factory=dict, description="추가 속성")
+    
+    @property
+    def stock_quantity(self) -> int:
+        """stock_quantity 속성 (하위 호환성)"""
+        return self.stock
+
+
+class ShippingInfo(BaseModel):
+    """배송 정보"""
+    
+    method: str = Field(..., description="배송 방법")
+    fee: float = Field(default=0, description="배송비")
+    estimated_days_min: int = Field(default=2, description="최소 배송일")
+    estimated_days_max: int = Field(default=3, description="최대 배송일")
+    free_shipping_minimum: Optional[float] = Field(None, description="무료배송 최소금액")
 
 
 class ProductImage(BaseModel):

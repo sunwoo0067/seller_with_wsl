@@ -17,6 +17,7 @@
   "license": "ISC",
   "dependencies": {
     "@supabase/supabase-js": "^2.50.3",
-    "dotenv": "^17.0.1"
+    "dotenv": "^17.0.1",
+    "tsx": "^4.20.3"
   }
 }

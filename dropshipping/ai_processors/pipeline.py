@@ -10,10 +10,8 @@ from typing import Any, Dict, List, Optional, Union
 
 from loguru import logger
 
-from dropshipping.ai_processors import (
-    ModelRouter,
-    ProductEnhancer,
-)
+from dropshipping.ai_processors.model_router import ModelRouter
+from dropshipping.ai_processors.product_enhancer import ProductEnhancer
 from dropshipping.ai_processors.image_processor import ImageProcessor
 from dropshipping.models.product import StandardProduct
 from dropshipping.storage.base import BaseStorage

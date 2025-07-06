@@ -51,6 +51,9 @@ class OwnerclanFetcher(BaseFetcher):
             self._get_token()
             response = requests.post(self.api_url, json=payload, headers=headers, timeout=self.timeout)
 
+        if response.status_code != 200:
+            print(f"API Error: {response.status_code}")
+            print(f"Response: {response.text}")
         response.raise_for_status()
         return response.json()
 
@@ -89,7 +92,7 @@ class OwnerclanFetcher(BaseFetcher):
     def fetch_detail(self, item_id: str) -> Dict:
         """Fetch details for a single product"""
         query = """
-        query($key: String!) {
+        query($key: ID!) {
             item(key: $key) {
                 key
                 name
@@ -111,6 +114,11 @@ class OwnerclanFetcher(BaseFetcher):
                     }
                 }
                 taxFree
+                adultOnly
+                returnable
+                images
+                createdAt
+                updatedAt
             }
         }
         """
