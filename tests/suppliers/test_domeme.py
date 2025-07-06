@@ -51,7 +51,7 @@ def test_fetch_list_success(mock_domeme_client, mock_storage):
         storage=mock_storage,
         supplier_name="domeme",
         api_key="test_key",
-        api_url="https://test.api.com"
+        api_url="https://test.api.com",
     )
     fetcher.client = mock_domeme_client
 
@@ -69,7 +69,7 @@ def test_fetch_list_api_error(mock_domeme_client, mock_storage):
         storage=mock_storage,
         supplier_name="domeme",
         api_key="test_key",
-        api_url="https://test.api.com"
+        api_url="https://test.api.com",
     )
     fetcher.client = mock_domeme_client
 
@@ -83,7 +83,7 @@ def test_fetch_detail_success(mock_domeme_client, mock_storage):
         storage=mock_storage,
         supplier_name="domeme",
         api_key="test_key",
-        api_url="https://test.api.com"
+        api_url="https://test.api.com",
     )
     fetcher.client = mock_domeme_client
 
@@ -101,7 +101,7 @@ def test_run_incremental_saves_new_products(mock_is_duplicate, mock_domeme_clien
         storage=mock_storage,
         supplier_name="domeme",
         api_key="test_key",
-        api_url="https://test.api.com"
+        api_url="https://test.api.com",
     )
     fetcher.client = mock_domeme_client
 
@@ -122,7 +122,7 @@ def test_run_incremental_skips_duplicates(mock_is_duplicate, mock_domeme_client,
         storage=mock_storage,
         supplier_name="domeme",
         api_key="test_key",
-        api_url="https://test.api.com"
+        api_url="https://test.api.com",
     )
     fetcher.client = mock_domeme_client
 

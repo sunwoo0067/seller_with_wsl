@@ -248,7 +248,7 @@ class CoupangOrderManager(BaseOrderManager):
         now = datetime.now(timezone.utc)
         datetime_str = now.strftime("%y%m%d")
         # Coupang wants 'YYYY-MM-DDTHH:MM:SSZ' format for the signature timestamp
-        timestamp_str = now.strftime('%Y-%m-%dT%H:%M:%SZ')
+        timestamp_str = now.strftime("%Y-%m-%dT%H:%M:%SZ")
 
         query_string = "&".join(f"{k}={v}" for k, v in sorted(query_params.items()))
         message = f"{datetime_str}T{timestamp_str}{method.upper()}{path}{query_string}{body}"
@@ -258,8 +258,8 @@ class CoupangOrderManager(BaseOrderManager):
         ).hexdigest()
 
         # The Authorization header format is slightly different from the signature message
-        auth_datetime_str = now.strftime('%y%m%d')
-        auth_timestamp_str = now.strftime('%H%M%S')
+        auth_datetime_str = now.strftime("%y%m%d")
+        auth_timestamp_str = now.strftime("%H%M%S")
 
         return {
             "Authorization": f"CEA algorithm=HmacSHA256, access-key={self.api_key}, signed-date={auth_datetime_str}T{auth_timestamp_str}Z, signature={signature}",
@@ -281,7 +281,8 @@ class CoupangOrderManager(BaseOrderManager):
         return options
 
     def _parse_datetime(self, date_str: Optional[str]) -> Optional[datetime]:
-        if not date_str: return None
+        if not date_str:
+            return None
         try:
             return datetime.fromisoformat(date_str.replace("Z", "+00:00"))
         except (ValueError, TypeError):
@@ -289,19 +290,28 @@ class CoupangOrderManager(BaseOrderManager):
 
     def _get_order_status(self, raw_order: Dict[str, Any]) -> OrderStatus:
         statuses = {item.get("status") for item in raw_order.get("orderItems", [])}
-        if not statuses: return OrderStatus.PENDING
-        if "CANCEL" in statuses: return OrderStatus.CANCELLED
-        if statuses <= {"FINAL_DELIVERY", "NONE_TRACKING"}: return OrderStatus.DELIVERED
-        if "DEPARTURE" in statuses or "DELIVERING" in statuses: return OrderStatus.SHIPPED
-        if "INSTRUCT" in statuses: return OrderStatus.PREPARING
-        if statuses <= {"ACCEPT"}: return OrderStatus.CONFIRMED
+        if not statuses:
+            return OrderStatus.PENDING
+        if "CANCEL" in statuses:
+            return OrderStatus.CANCELLED
+        if statuses <= {"FINAL_DELIVERY", "NONE_TRACKING"}:
+            return OrderStatus.DELIVERED
+        if "DEPARTURE" in statuses or "DELIVERING" in statuses:
+            return OrderStatus.SHIPPED
+        if "INSTRUCT" in statuses:
+            return OrderStatus.PREPARING
+        if statuses <= {"ACCEPT"}:
+            return OrderStatus.CONFIRMED
         return OrderStatus.PENDING
 
     def _get_delivery_status(self, raw_order: Dict[str, Any]) -> DeliveryStatus:
         order_status = self._get_order_status(raw_order)
-        if order_status == OrderStatus.SHIPPED: return DeliveryStatus.IN_TRANSIT
-        if order_status == OrderStatus.DELIVERED: return DeliveryStatus.DELIVERED
-        if order_status == OrderStatus.PREPARING: return DeliveryStatus.PREPARING
+        if order_status == OrderStatus.SHIPPED:
+            return DeliveryStatus.IN_TRANSIT
+        if order_status == OrderStatus.DELIVERED:
+            return DeliveryStatus.DELIVERED
+        if order_status == OrderStatus.PREPARING:
+            return DeliveryStatus.PREPARING
         return DeliveryStatus.PENDING
 
     def _get_coupang_status(self, status: OrderStatus) -> Optional[str]:

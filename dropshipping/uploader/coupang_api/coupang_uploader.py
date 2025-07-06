@@ -21,7 +21,7 @@ from dropshipping.uploader.base import BaseUploader, MarketplaceType
 class CoupangUploader(BaseUploader):
     """쿠팡 업로더"""
 
-    def __init__(self, storage, config: 'CoupangConfig'):
+    def __init__(self, storage, config: "CoupangConfig"):
         """
         초기화
 
@@ -111,7 +111,9 @@ class CoupangUploader(BaseUploader):
             "deliveryMethod": "SEQUENCIAL",  # 순차배송
             "deliveryCompanyCode": self.config.delivery_company_code,
             "deliveryChargeType": "PAY",  # 유료배송
-            "deliveryCharge": int(product.attributes.get("shipping_fee", self.config.default_shipping_fee)),
+            "deliveryCharge": int(
+                product.attributes.get("shipping_fee", self.config.default_shipping_fee)
+            ),
             "freeShipOverAmount": self.config.free_ship_over_amount,
             "remoteAreaDeliverable": "Y",
             "unionDeliveryType": "UNION_DELIVERY",  # 묶음배송 가능
@@ -241,7 +243,7 @@ class CoupangUploader(BaseUploader):
                 return {
                     "status": "uploaded",
                     "marketplace_product_id": seller_product_id,
-                    "marketplace_url": f"https://www.coupang.com/vp/products/{seller_product_id}" # URL is hypothetical
+                    "marketplace_url": f"https://www.coupang.com/vp/products/{seller_product_id}",  # URL is hypothetical
                 }
             else:
                 return {
@@ -281,7 +283,7 @@ class CoupangUploader(BaseUploader):
                 return {
                     "status": "updated",
                     "marketplace_product_id": marketplace_product_id,
-                    "marketplace_url": f"https://www.coupang.com/vp/products/{marketplace_product_id}" # URL is hypothetical
+                    "marketplace_url": f"https://www.coupang.com/vp/products/{marketplace_product_id}",  # URL is hypothetical
                 }
             else:
                 return {

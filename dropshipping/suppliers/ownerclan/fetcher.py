@@ -45,11 +45,13 @@ class OwnerclanFetcher(BaseFetcher):
         }
         payload = {"query": query, "variables": variables or {}}
         response = requests.post(self.api_url, json=payload, headers=headers, timeout=self.timeout)
-        
+
         # Re-authenticate on authorization error
         if response.status_code in [401, 403]:
             self._get_token()
-            response = requests.post(self.api_url, json=payload, headers=headers, timeout=self.timeout)
+            response = requests.post(
+                self.api_url, json=payload, headers=headers, timeout=self.timeout
+            )
 
         if response.status_code != 200:
             print(f"API Error: {response.status_code}")

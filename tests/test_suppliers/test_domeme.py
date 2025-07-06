@@ -85,16 +85,16 @@ class TestDomemeClient:
                     "productNm": "테스트 상품 1",
                     "categoryCode": "001",
                     "supplyPrice": 10000.0,
-                    "salePrice": 15000.0
+                    "salePrice": 15000.0,
                 },
                 {
                     "productNo": "67890",
                     "productNm": "테스트 상품 2",
                     "categoryCode": "001",
                     "supplyPrice": 20000.0,
-                    "salePrice": 25000.0
-                }
-            ]
+                    "salePrice": 25000.0,
+                },
+            ],
         }
         mock_get.return_value = mock_response
 
@@ -110,14 +110,14 @@ class TestDomemeClient:
         assert result["has_next"] is False
 
         # API 호출 검증
-        mock_post.assert_called_once()
-        call_args = mock_post.call_args
+        mock_get.assert_called_once()
+        call_args = mock_get.call_args
         assert call_args[0][0] == client.base_url
         assert "apiKey" in call_args[1]["data"]
         assert call_args[1]["data"]["categoryCode"] == "001"
 
     @patch("requests.get")
-    def test_api_error_handling(self, mock_post, client):
+    def test_api_error_handling(self, mock_get, client):
         """API 오류 처리 테스트"""
         # 오류 응답 설정
         error_xml = """<?xml version="1.0" encoding="UTF-8"?>
@@ -143,13 +143,13 @@ class TestDomemeClient:
         assert "인증 실패" in str(exc_info.value.last_attempt.exception())
 
     @patch("requests.get")
-    def test_network_error_handling(self, mock_post, client):
+    def test_network_error_handling(self, mock_get, client):
         """네트워크 오류 처리 테스트"""
         # 네트워크 오류 설정
         import requests
         from tenacity import RetryError
 
-        mock_post.side_effect = requests.RequestException("Connection error")
+        mock_get.side_effect = requests.exceptions.RequestException("Network error")
 
         # 재시도 후 오류 발생 확인
         with pytest.raises(RetryError) as exc_info:
@@ -198,7 +198,7 @@ class TestDomemeFetcher:
                 storage=storage,
                 supplier_name="domeme",
                 api_key="test-api-key",
-                api_url="https://test.api.com"
+                api_url="https://test.api.com",
             )
             fetcher.client = mock_client
             return fetcher

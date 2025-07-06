@@ -7,10 +7,12 @@ from dropshipping.storage.base import BaseStorage
 from dropshipping.uploader.coupang_api.coupang_uploader import CoupangUploader
 from dropshipping.uploader.registry import UploaderRegistry
 
+
 @pytest.fixture
 def mock_storage():
     """Mock BaseStorage."""
     return MagicMock(spec=BaseStorage)
+
 
 @pytest.fixture
 def coupang_config():
@@ -22,12 +24,14 @@ def coupang_config():
         test_mode=True,
     )
 
+
 @pytest.fixture
 def uploader_registry():
     """Fixture for UploaderRegistry with CoupangUploader registered."""
     registry = UploaderRegistry()
     registry.register("coupang", CoupangUploader)
     return registry
+
 
 @pytest.mark.asyncio
 async def test_get_uploader_with_dependency_injection(
@@ -54,6 +58,7 @@ async def test_get_uploader_with_dependency_injection(
     assert uploader.test_mode is True
     assert uploader.base_url == "https://api-gateway-it.coupang.com"
 
+
 @pytest.mark.asyncio
 async def test_coupang_uploader_uses_config_values(
     mock_storage: BaseStorage, coupang_config: CoupangConfig
@@ -65,7 +70,9 @@ async def test_coupang_uploader_uses_config_values(
     uploader = CoupangUploader(storage=mock_storage, config=coupang_config)
 
     # Mock the internal _api_request method
-    uploader._api_request = AsyncMock(return_value={"code": "SUCCESS", "data": {"sellerProductId": "12345"}})
+    uploader._api_request = AsyncMock(
+        return_value={"code": "SUCCESS", "data": {"sellerProductId": "12345"}}
+    )
 
     # Create a dummy product
     product = StandardProduct(
@@ -76,9 +83,9 @@ async def test_coupang_uploader_uses_config_values(
         price=15000,
         cost=10000,
         stock=10,
-        category_name="전자기기/이어폰", # A category present in the default mapping
+        category_name="전자기기/이어폰",  # A category present in the default mapping
         images=[],
-        description="<p>Test Description</p>"
+        description="<p>Test Description</p>",
     )
 
     # Transform the product

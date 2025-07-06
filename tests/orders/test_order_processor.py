@@ -50,24 +50,23 @@ class MockStorage:
     async def get_active_orders(self):
         """진행중인 주문 조회"""
         return [
-            order for order in self.orders.values()
+            order
+            for order in self.orders.values()
             if order.status in [OrderStatus.CONFIRMED, OrderStatus.PREPARING, OrderStatus.SHIPPED]
         ]
 
     async def get_orders_for_tracking(self):
         """배송 추적 대상 주문 조회"""
         return [
-            order for order in self.orders.values()
+            order
+            for order in self.orders.values()
             if order.status in [OrderStatus.PREPARING, OrderStatus.SHIPPED]
             and not order.delivery.tracking_number
         ]
 
     async def get_cancelled_orders(self):
         """취소 요청된 주문 조회"""
-        return [
-            order for order in self.orders.values()
-            if order.status == OrderStatus.CANCELLED
-        ]
+        return [order for order in self.orders.values() if order.status == OrderStatus.CANCELLED]
 
 
 @pytest.fixture
@@ -161,7 +160,7 @@ class TestOrderProcessor:
         # 검증
         assert results["coupang"] == 1
         assert len(mock_storage.orders) == 1
-        
+
         saved_order = list(mock_storage.orders.values())[0]
         assert saved_order.supplier_order_id == "DOMEME_ORDER_001"
         assert saved_order.supplier_ordered_at is not None
@@ -175,7 +174,7 @@ class TestOrderProcessor:
         mock_storage.products["P003"] = {
             "id": "P003",
             "supplier_id": "ownerclan",
-            "name": "테스트 상품 3"
+            "name": "테스트 상품 3",
         }
 
         # 주문 2개 생성
@@ -218,7 +217,7 @@ class TestOrderProcessor:
         """주문 상태 동기화 테스트"""
         # 주문 저장
         await mock_storage.save_order(sample_order)
-        
+
         processor = OrderProcessor(mock_storage, {"coupang": {"enabled": True}})
 
         # Mock 설정
@@ -226,11 +225,11 @@ class TestOrderProcessor:
         mock_coupang_manager.fetch_order_detail = AsyncMock(
             return_value={"orderId": "CP123456", "status": "SHIPPED"}
         )
-        
+
         updated_order = sample_order.model_copy()
         updated_order.status = OrderStatus.SHIPPED
         mock_coupang_manager.transform_order = AsyncMock(return_value=updated_order)
-        
+
         processor.order_managers["coupang"] = mock_coupang_manager
 
         # 실행
@@ -239,7 +238,7 @@ class TestOrderProcessor:
         # 검증
         assert results["updated"] == 1
         assert results["failed"] == 0
-        
+
         updated = mock_storage.orders[sample_order.id]
         assert updated.status == OrderStatus.SHIPPED
 
@@ -251,18 +250,14 @@ class TestOrderProcessor:
         sample_order.supplier_order_id = "DOMEME_ORDER_001"
         await mock_storage.save_order(sample_order)
 
-        processor = OrderProcessor(mock_storage, {
-            "coupang": {"enabled": True},
-            "domeme": {"enabled": True}
-        })
+        processor = OrderProcessor(
+            mock_storage, {"coupang": {"enabled": True}, "domeme": {"enabled": True}}
+        )
 
         # Mock 설정
         mock_domeme_orderer = Mock()
         mock_domeme_orderer.get_tracking_info = AsyncMock(
-            return_value={
-                "carrier": "CJ대한통운",
-                "tracking_number": "1234567890"
-            }
+            return_value={"carrier": "CJ대한통운", "tracking_number": "1234567890"}
         )
         processor.supplier_orderers["domeme"] = mock_domeme_orderer
 

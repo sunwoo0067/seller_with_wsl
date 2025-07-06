@@ -70,18 +70,24 @@ class CoupangUploaderFixed(BaseUploader):
         }
 
     async def _api_request(
-        self, method: str, path: str, data: Optional[Dict[str, Any]] = None, params: Optional[Dict[str, Any]] = None
+        self,
+        method: str,
+        path: str,
+        data: Optional[Dict[str, Any]] = None,
+        params: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         url = f"{self.base_url}{path}"
-        query_string = '&'.join([f'{k}={v}' for k, v in params.items()]) if params else ''
+        query_string = "&".join([f"{k}={v}" for k, v in params.items()]) if params else ""
         headers = self._create_auth_headers(method, path, query_string)
-        
+
         try:
             if method.upper() in ["POST", "PUT", "PATCH"]:
-                response = await self.client.request(method, url, headers=headers, json=data, params=params)
+                response = await self.client.request(
+                    method, url, headers=headers, json=data, params=params
+                )
             else:
                 response = await self.client.request(method, url, headers=headers, params=params)
-            
+
             response.raise_for_status()
             return response.json()
         except httpx.HTTPStatusError as e:
@@ -101,9 +107,9 @@ class CoupangUploaderFixed(BaseUploader):
             errors.append("상품 이미지가 없습니다")
         if product.category_name not in self.category_mapping:
             errors.append("지원하지 않는 카테고리")
-        
+
         if errors:
-            return False, ', '.join(errors)
+            return False, ", ".join(errors)
         return True, None
 
     async def transform_product(self, product: StandardProduct) -> Dict[str, Any]:
@@ -114,8 +120,10 @@ class CoupangUploaderFixed(BaseUploader):
         images = []
         main_image = next((img for img in product.images if img.is_main), None)
         if main_image:
-            images.append({"imageType": "REPRESENTATION", "vendorPath": main_image.url, "imageOrder": 0})
-        
+            images.append(
+                {"imageType": "REPRESENTATION", "vendorPath": main_image.url, "imageOrder": 0}
+            )
+
         sub_images = [img for img in product.images if not img.is_main]
         for i, img in enumerate(sub_images):
             images.append({"imageType": "DETAIL", "vendorPath": img.url, "imageOrder": i + 1})
@@ -124,31 +132,35 @@ class CoupangUploaderFixed(BaseUploader):
         if product.variants:
             for variant in product.variants:
                 item_name = " - ".join(variant.options.values())
-                items.append({
-                    "itemName": item_name,
-                    "originalPrice": int(variant.price),
-                    "salePrice": int(variant.price),
-                    "maximumBuyCount": 10,
-                    "quantity": variant.stock,
-                    "externalVendorSku": variant.sku,
-                    "barcode": variant.barcode or "",
-                    "emptyBarcode": not bool(variant.barcode),
-                })
+                items.append(
+                    {
+                        "itemName": item_name,
+                        "originalPrice": int(variant.price),
+                        "salePrice": int(variant.price),
+                        "maximumBuyCount": 10,
+                        "quantity": variant.stock,
+                        "externalVendorSku": variant.sku,
+                        "barcode": variant.barcode or "",
+                        "emptyBarcode": not bool(variant.barcode),
+                    }
+                )
         else:
-            items.append({
-                "itemName": product.name,
-                "originalPrice": int(product.price),
-                "salePrice": int(product.price),
-                "maximumBuyCount": 10,
-                "quantity": product.stock,
-                "externalVendorSku": product.supplier_product_id,
-            })
+            items.append(
+                {
+                    "itemName": product.name,
+                    "originalPrice": int(product.price),
+                    "salePrice": int(product.price),
+                    "maximumBuyCount": 10,
+                    "quantity": product.stock,
+                    "externalVendorSku": product.supplier_product_id,
+                }
+            )
 
         return {
             "displayCategoryCode": self.category_mapping.get(product.category_name),
             "sellerProductName": product.name,
             "vendorId": self.vendor_id,
-            "saleStartedAt": datetime.now().strftime('%Y-%m-%dT%H:%M:%S'),
+            "saleStartedAt": datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
             "saleEndedAt": "2099-01-01T23:59:59",
             "images": images,
             "items": items,
@@ -156,13 +168,15 @@ class CoupangUploaderFixed(BaseUploader):
             "deliveryCompanyCode": "KGB",
             "deliveryChargeType": "FREE",
             "deliveryCharge": product.attributes.get("shipping_fee", 0),
-            "returnCenterCode": "your_return_center_code", 
+            "returnCenterCode": "your_return_center_code",
             "returnChargeName": "your_return_charge_name",
             "returnCharge": 5000,
             "sellerProductId": product.id,
             "invoiceDocument": "INVOICE_DOCUMENT_NONE",
             "taxType": "TAX",
-            "contents": [{"contentsType": "TEXT", "contentDetails": [{"content": product.description}]}],
+            "contents": [
+                {"contentsType": "TEXT", "contentDetails": [{"content": product.description}]}
+            ],
         }
 
     def upload_product(self, product: StandardProduct) -> Dict[str, Any]:
@@ -198,18 +212,18 @@ class CoupangUploaderFixed(BaseUploader):
     async def upload_single(self, data: Dict[str, Any]) -> Dict[str, Any]:
         path = "/v2/providers/seller_api/v1/products"
         result = await self._api_request("POST", path, data=data)
-        
+
         if result.get("code") == "SUCCESS":
             return {
                 "success": True,
                 "product_id": result.get("data", {}).get("productId"),
-                "message": result.get("message")
+                "message": result.get("message"),
             }
         return {"success": False, "error": result.get("message"), "code": result.get("code")}
 
     async def update_single(self, product_id: str, data: Dict[str, Any]) -> Dict[str, Any]:
         path = f"/v2/providers/seller_api/v1/products/{product_id}"
-        data["productId"] = product_id # Test requires this
+        data["productId"] = product_id  # Test requires this
         result = await self._api_request("PUT", path, data=data)
 
         if result.get("code") == "SUCCESS":
@@ -225,7 +239,7 @@ class CoupangUploaderFixed(BaseUploader):
             return {
                 "success": True,
                 "status": data.get("status"),
-                "status_name": data.get("statusName")
+                "status_name": data.get("statusName"),
             }
         return {"success": False, "error": result.get("message"), "code": result.get("code")}
 

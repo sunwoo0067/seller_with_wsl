@@ -168,7 +168,7 @@ class TestDomemeFetcher:
             storage=mock_storage,
             supplier_name="domeme",
             api_key="test_key",
-            api_url="https://test.api.com"
+            api_url="https://test.api.com",
         )
 
         assert fetcher.supplier_name == "domeme"
@@ -189,7 +189,7 @@ class TestDomemeFetcher:
             storage=mock_storage,
             supplier_name="domeme",
             api_key="test_key",
-            api_url="https://test.api.com"
+            api_url="https://test.api.com",
         )
 
         result = fetcher.fetch_list(page=1)
@@ -221,21 +221,21 @@ class TestDomemeFetcher:
         pass
 
     @patch("dropshipping.suppliers.domeme.fetcher.requests")
-    def test_incremental_sync_single_category(
-        self, mock_requests, mock_storage
-    ):
+    def test_incremental_sync_single_category(self, mock_requests, mock_storage):
         """단일 카테고리 증분 동기화 테스트"""
         # Mock 응답 준비
         mock_response = Mock()
         mock_response.status_code = 200
-        mock_response.content = b'<?xml version="1.0" encoding="UTF-8"?><result><products></products></result>'
+        mock_response.content = (
+            b'<?xml version="1.0" encoding="UTF-8"?><result><products></products></result>'
+        )
         mock_requests.post.return_value = mock_response
 
         fetcher = DomemeFetcher(
             storage=mock_storage,
             supplier_name="domeme",
             api_key="test_key",
-            api_url="https://test.api.com"
+            api_url="https://test.api.com",
         )
 
         since_date = datetime.now() - timedelta(days=1)

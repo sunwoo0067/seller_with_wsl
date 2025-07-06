@@ -17,7 +17,7 @@ class TestBaseUploader:
 
     class MockUploader(BaseUploader):
         """테스트용 Mock 업로더"""
-        
+
         def __init__(self, marketplace_type, storage, config):
             super().__init__(marketplace_type, storage, config)
             # 테스트에서 기대하는 속성 추가
@@ -43,7 +43,7 @@ class TestBaseUploader:
 
         async def check_product_status(self, marketplace_product_id):
             return {"success": True, "status": "SALE"}
-        
+
         async def upload_product(self, product, update_existing=True):
             """상품 업로드 구현"""
             # 검증
@@ -56,15 +56,15 @@ class TestBaseUploader:
                     "marketplace": self.marketplace,
                     "marketplace_product_id": None,
                     "errors": [error_msg],
-                    "uploaded_at": None
+                    "uploaded_at": None,
                 }
-            
+
             # 변환
             product_data = await self.transform_product(product)
-            
+
             # 업로드
             result = await self.upload_single(product_data)
-            
+
             if result["success"]:
                 self.stats["uploaded"] += 1
                 return {
@@ -73,7 +73,7 @@ class TestBaseUploader:
                     "marketplace": self.marketplace,
                     "marketplace_product_id": result["product_id"],
                     "errors": [],
-                    "uploaded_at": "2024-01-01T00:00:00"
+                    "uploaded_at": "2024-01-01T00:00:00",
                 }
             else:
                 self.stats["failed"] += 1
@@ -83,21 +83,21 @@ class TestBaseUploader:
                     "marketplace": self.marketplace,
                     "marketplace_product_id": None,
                     "errors": ["업로드 실패"],
-                    "uploaded_at": None
+                    "uploaded_at": None,
                 }
-        
+
         async def update_stock(self, marketplace_product_id, stock):
             """재고 업데이트 구현"""
             return True
-        
+
         async def update_price(self, marketplace_product_id, price):
             """가격 업데이트 구현"""
             return True
-        
+
         async def check_upload_status(self, upload_id):
             """업로드 상태 확인 구현"""
             return {"status": "completed", "marketplace_product_id": "MP001"}
-        
+
         async def upload_batch(self, products, max_concurrent=10):
             """배치 업로드"""
             results = []
@@ -107,33 +107,35 @@ class TestBaseUploader:
                     results.append(result)
                 except Exception as e:
                     self.stats["failed"] += 1
-                    results.append({
-                        "product_id": product.id,
-                        "status": UploadStatus.FAILED,
-                        "marketplace": self.marketplace,
-                        "marketplace_product_id": None,
-                        "errors": [str(e)],
-                        "uploaded_at": None
-                    })
+                    results.append(
+                        {
+                            "product_id": product.id,
+                            "status": UploadStatus.FAILED,
+                            "marketplace": self.marketplace,
+                            "marketplace_product_id": None,
+                            "errors": [str(e)],
+                            "uploaded_at": None,
+                        }
+                    )
             return results
-        
+
         def validate_api_credentials(self):
             """API 자격증명 검증"""
             return bool(self.api_key and self.api_secret)
-        
+
         def get_stats(self):
             """통계 조회"""
             total = self.stats["uploaded"] + self.stats["failed"]
             success_rate = self.stats["uploaded"] / total if total > 0 else 0
-            
+
             return {
                 "uploaded": self.stats["uploaded"],
                 "failed": self.stats["failed"],
                 "total": total,
                 "success_rate": success_rate,
-                "marketplace": self.marketplace
+                "marketplace": self.marketplace,
             }
-        
+
         def reset_stats(self):
             """통계 초기화"""
             self.stats = {"uploaded": 0, "failed": 0, "errors": []}
@@ -146,20 +148,15 @@ class TestBaseUploader:
     @pytest.fixture
     def uploader(self, mock_storage):
         """테스트용 업로더"""
+
         # Mock 설정 객체 생성
         class MockConfig:
             def get(self, key, default=None):
-                config_dict = {
-                    "api_key": "test_key",
-                    "api_secret": "test_secret",
-                    "batch_size": 5
-                }
+                config_dict = {"api_key": "test_key", "api_secret": "test_secret", "batch_size": 5}
                 return config_dict.get(key, default)
-        
+
         return self.MockUploader(
-            marketplace_type=MarketplaceType.COUPANG, 
-            storage=mock_storage, 
-            config=MockConfig()
+            marketplace_type=MarketplaceType.COUPANG, storage=mock_storage, config=MockConfig()
         )
 
     @pytest.fixture

@@ -47,7 +47,7 @@ class MockStorage(BaseStorage):
     async def _create(self, table: str, data: dict) -> dict:
         if table not in self.data:
             self.data[table] = {}
-        
+
         record_id = data.get("id", str(self.id_counter))
         if "id" not in data:
             self.id_counter += 1
@@ -58,11 +58,17 @@ class MockStorage(BaseStorage):
         self.data[table][record_id] = data
         return data
 
-    async def _list(self, table: str, filters: Optional[Dict[str, Any]] = None, limit: Optional[int] = None, offset: int = 0) -> List[Dict[str, Any]]:
+    async def _list(
+        self,
+        table: str,
+        filters: Optional[Dict[str, Any]] = None,
+        limit: Optional[int] = None,
+        offset: int = 0,
+    ) -> List[Dict[str, Any]]:
         if table not in self.data:
             return []
 
-        items = sorted(list(self.data[table].values()), key=lambda x: x.get('id', ''))
+        items = sorted(list(self.data[table].values()), key=lambda x: x.get("id", ""))
 
         if filters:
             active_filters = {k: v for k, v in filters.items() if v is not None}
@@ -98,16 +104,18 @@ class MockStorage(BaseStorage):
 
         return items
 
-    async def list(self, table: str, filters: Optional[Dict[str, Any]] = None, **kwargs) -> List[Dict[str, Any]]:
+    async def list(
+        self, table: str, filters: Optional[Dict[str, Any]] = None, **kwargs
+    ) -> List[Dict[str, Any]]:
         """Public list method for compatibility with application code."""
         query_filters = filters.copy() if filters is not None else {}
-        
-        limit = kwargs.pop('limit', None)
-        offset = kwargs.pop('offset', 0)
-        
+
+        limit = kwargs.pop("limit", None)
+        offset = kwargs.pop("offset", 0)
+
         # The rest of kwargs are assumed to be filters
         query_filters.update(kwargs)
-        
+
         if not query_filters:
             query_filters = None
 
@@ -131,7 +139,7 @@ class MockStorage(BaseStorage):
         """Public update method."""
         if table in self.data and record_id in self.data[table]:
             self.data[table][record_id].update(data)
-            self.data[table][record_id]['updated_at'] = datetime.now()
+            self.data[table][record_id]["updated_at"] = datetime.now()
             return True
         return False
 
@@ -151,14 +159,19 @@ class MockStorage(BaseStorage):
         products = await self._list("raw_products", filters={"supplier_id": supplier_id})
         return any(p.get("data_hash") == data_hash for p in products)
 
-    async def get_product_by_supplier_id(self, supplier_id: str, supplier_product_id: str) -> Optional[StandardProduct]:
-        products = await self._list("products", filters={"supplier_id": supplier_id, "supplier_product_id": supplier_product_id})
+    async def get_product_by_supplier_id(
+        self, supplier_id: str, supplier_product_id: str
+    ) -> Optional[StandardProduct]:
+        products = await self._list(
+            "products",
+            filters={"supplier_id": supplier_id, "supplier_product_id": supplier_product_id},
+        )
         if products:
             return StandardProduct(**products[0])
         return None
-    
+
     async def get_all_products(self, limit: int = 1000, offset: int = 0) -> List[StandardProduct]:
-        all_products_data = list(self.data["products"].values())[offset:offset+limit]
+        all_products_data = list(self.data["products"].values())[offset : offset + limit]
         return [StandardProduct(**data) for data in all_products_data]
 
     async def update_product(self, product_id: str, data: Dict[str, Any]) -> bool:
@@ -225,7 +238,9 @@ class MockStorage(BaseStorage):
     async def get_uploads_by_marketplace_id(self, marketplace_id: str) -> List[Dict[str, Any]]:
         return await self._list("uploads", filters={"marketplace_id": marketplace_id})
 
-    async def log_upload_attempt(self, product_id: str, marketplace_id: str, success: bool, details: Optional[str] = None) -> None:
+    async def log_upload_attempt(
+        self, product_id: str, marketplace_id: str, success: bool, details: Optional[str] = None
+    ) -> None:
         pass
 
     async def get_last_sync_time(self, sync_type: str) -> Optional[datetime]:
@@ -281,8 +296,12 @@ class MockStorage(BaseStorage):
                 results.append(created_record)
         return results
 
-    async def get_marketplace_upload(self, product_id: str, marketplace: str) -> Optional[Dict[str, Any]]:
-        uploads = await self._list("uploads", filters={"product_id": product_id, "marketplace_id": marketplace})
+    async def get_marketplace_upload(
+        self, product_id: str, marketplace: str
+    ) -> Optional[Dict[str, Any]]:
+        uploads = await self._list(
+            "uploads", filters={"product_id": product_id, "marketplace_id": marketplace}
+        )
         if uploads:
             return uploads[0]
         return None
@@ -306,6 +325,7 @@ class MockStorage(BaseStorage):
         """경쟁사 상품 정보 조회 (목업)"""
         return await self._list("competitors", filters={"product_id": product_id})
 
+
 @pytest.fixture
 def storage():
     return MockStorage()
@@ -315,9 +335,39 @@ def storage():
 async def setup_test_data(storage: MockStorage):
     """테스트 데이터 설정"""
     products_data = [
-        {"id": "1", "name": "스마트폰 거치대", "price": Decimal("15000"), "stock": 100, "status": "active", "cost": Decimal("7000"), "category_code": "액세서리", "supplier_id": "s1", "supplier_product_id": "p1"},
-        {"id": "2", "name": "블루투스 이어폰", "price": Decimal("80000"), "stock": 50, "status": "active", "cost": Decimal("40000"), "category_code": "음향기기", "supplier_id": "s1", "supplier_product_id": "p2"},
-        {"id": "3", "name": "휴대용 선풍기", "price": Decimal("25000"), "stock": 200, "status": "inactive", "cost": Decimal("12000"), "category_code": "계절가전", "supplier_id": "s2", "supplier_product_id": "p3"},
+        {
+            "id": "1",
+            "name": "스마트폰 거치대",
+            "price": Decimal("15000"),
+            "stock": 100,
+            "status": "active",
+            "cost": Decimal("7000"),
+            "category_code": "액세서리",
+            "supplier_id": "s1",
+            "supplier_product_id": "p1",
+        },
+        {
+            "id": "2",
+            "name": "블루투스 이어폰",
+            "price": Decimal("80000"),
+            "stock": 50,
+            "status": "active",
+            "cost": Decimal("40000"),
+            "category_code": "음향기기",
+            "supplier_id": "s1",
+            "supplier_product_id": "p2",
+        },
+        {
+            "id": "3",
+            "name": "휴대용 선풍기",
+            "price": Decimal("25000"),
+            "stock": 200,
+            "status": "inactive",
+            "cost": Decimal("12000"),
+            "category_code": "계절가전",
+            "supplier_id": "s2",
+            "supplier_product_id": "p3",
+        },
     ]
     products = [StandardProduct(**p) for p in products_data]
     for product in products:
@@ -328,37 +378,59 @@ async def setup_test_data(storage: MockStorage):
     for i in range(30):
         product = products[i % len(products)]
         order_date = datetime.now() - timedelta(days=i)
-        orders_data.append({
-            "id": f"order{i}",
-            "marketplace": "test_market", 
-            "marketplace_order_id": f"M{i}",
-            "order_date": order_date,
-            "status": "delivered" if i % 2 == 0 else "shipped",
-            "items": [{
-                "product_id": product.id,
-                "quantity": (i % 5) + 1,
-                "unit_price": product.price,
-                "total_price": product.price * ((i % 5) + 1)
-            }],
-            "customer": {"name": f"Customer{i}"},
-            "payment": {"total_amount": product.price * ((i % 5) + 1)},
-            "delivery": {"status": "delivered" if i % 2 == 0 else "in_transit"}
-        })
+        orders_data.append(
+            {
+                "id": f"order{i}",
+                "marketplace": "test_market",
+                "marketplace_order_id": f"M{i}",
+                "order_date": order_date,
+                "status": "delivered" if i % 2 == 0 else "shipped",
+                "items": [
+                    {
+                        "product_id": product.id,
+                        "quantity": (i % 5) + 1,
+                        "unit_price": product.price,
+                        "total_price": product.price * ((i % 5) + 1),
+                    }
+                ],
+                "customer": {"name": f"Customer{i}"},
+                "payment": {"total_amount": product.price * ((i % 5) + 1)},
+                "delivery": {"status": "delivered" if i % 2 == 0 else "in_transit"},
+            }
+        )
     await storage.upsert("orders", orders_data, on_conflict="id")
 
     trends_data = [
-        {"id": "t1", "topic": "홈트레이닝", "monthly_searches": 50000, "trend_date": datetime.now() - timedelta(days=5)},
+        {
+            "id": "t1",
+            "topic": "홈트레이닝",
+            "monthly_searches": 50000,
+            "trend_date": datetime.now() - timedelta(days=5),
+        },
     ]
     await storage.upsert("trends", trends_data, on_conflict="id")
 
     competitors_data = [
-        {"id": "c1", "product_id": "1", "name": "타사 거치대", "price": 14000, "reviews": 50, "rating": 4.1},
-        {"id": "c2", "product_id": "1", "name": "또다른 거치대", "price": 16000, "reviews": 150, "rating": 4.4},
+        {
+            "id": "c1",
+            "product_id": "1",
+            "name": "타사 거치대",
+            "price": 14000,
+            "reviews": 50,
+            "rating": 4.1,
+        },
+        {
+            "id": "c2",
+            "product_id": "1",
+            "name": "또다른 거치대",
+            "price": 16000,
+            "reviews": 150,
+            "rating": 4.4,
+        },
     ]
     await storage.upsert("competitors", competitors_data, on_conflict="id")
-    
-    return storage
 
+    return storage
 
 
 class TestSalesAnalyzer:
@@ -446,9 +518,7 @@ class TestKeywordResearcher:
     async def test_analyze_keyword_combinations(self, storage, setup_test_data):
         """키워드 조합 분석 테스트"""
         researcher = KeywordResearcher(storage, {"env": "test"})
-        combinations = await researcher.analyze_keyword_combinations(
-            ["무선", "블루투스", "이어폰"]
-        )
+        combinations = await researcher.analyze_keyword_combinations(["무선", "블루투스", "이어폰"])
         assert isinstance(combinations, list)
 
     @pytest.mark.asyncio

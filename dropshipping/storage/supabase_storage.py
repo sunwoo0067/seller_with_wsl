@@ -556,7 +556,9 @@ class SupabaseStorage(BaseStorage):
             logger.error(f"Upsert failed for table {table_name}: {str(e)}")
             raise
 
-    def get_marketplace_upload(self, product_id: str, marketplace_id: str) -> Optional[Dict[str, Any]]:
+    def get_marketplace_upload(
+        self, product_id: str, marketplace_id: str
+    ) -> Optional[Dict[str, Any]]:
         """마켓플레이스 업로드 기록을 조회합니다."""
         try:
             marketplace_uuid = self._get_marketplace_id(marketplace_id)
@@ -607,12 +609,18 @@ class SupabaseStorage(BaseStorage):
         for code, uuid in self.supplier_id_cache.items():
             if uuid == supplier_id:
                 return code
-        
+
         try:
-            result = self.client.table("suppliers").select("code").eq("id", supplier_id).single().execute()
+            result = (
+                self.client.table("suppliers")
+                .select("code")
+                .eq("id", supplier_id)
+                .single()
+                .execute()
+            )
             if result.data:
-                code = result.data['code']
-                self.supplier_id_cache[code] = supplier_id # Update cache
+                code = result.data["code"]
+                self.supplier_id_cache[code] = supplier_id  # Update cache
                 return code
             raise ValueError(f"Supplier with ID {supplier_id} not found.")
         except Exception as e:
@@ -625,12 +633,18 @@ class SupabaseStorage(BaseStorage):
         for code, uuid in self.marketplace_id_cache.items():
             if uuid == marketplace_id:
                 return code
-        
+
         try:
-            result = self.client.table("marketplaces").select("code").eq("id", marketplace_id).single().execute()
+            result = (
+                self.client.table("marketplaces")
+                .select("code")
+                .eq("id", marketplace_id)
+                .single()
+                .execute()
+            )
             if result.data:
-                code = result.data['code']
-                self.marketplace_id_cache[code] = marketplace_id # Update cache
+                code = result.data["code"]
+                self.marketplace_id_cache[code] = marketplace_id  # Update cache
                 return code
             raise ValueError(f"Marketplace with ID {marketplace_id} not found.")
         except Exception as e:

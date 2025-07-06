@@ -141,32 +141,32 @@ class MockStorage(BaseStorage):
             "processed": len([p for p in products if p.get("status") == "processed"]),
             "failed": len([p for p in products if p.get("status") == "failed"]),
         }
-    
+
     # 누락된 추상 메서드들 구현
     def get_pricing_rules(self, active_only: bool = True) -> list:
         """가격 규칙 목록 반환"""
         return []
-    
+
     def get_all_category_mappings(self) -> list:
         """카테고리 매핑 목록 반환"""
         return []
-    
+
     def get_supplier_code(self, supplier_name: str) -> str:
         """공급사 코드 반환"""
         return supplier_name.upper()
-    
+
     def get_marketplace_code(self, marketplace_name: str) -> str:
         """마켓플레이스 코드 반환"""
         return marketplace_name.upper()
-    
+
     def save_marketplace_upload(self, data: dict) -> dict:
         """마켓플레이스 업로드 정보 저장"""
         return {"id": 1, **data}
-    
+
     def get_marketplace_upload(self, product_id: str, marketplace: str) -> dict:
         """마켓플레이스 업로드 정보 조회"""
         return None
-    
+
     def upsert(self, table: str, data: dict, unique_fields: list) -> dict:
         """Upsert 작업 수행"""
         return {"id": 1, **data}
@@ -552,7 +552,9 @@ class TestOrderProcessing:
         asyncio.run(storage.create("orders", order_data))
 
         # Mock 상세 조회
-        with patch.object(coupang_manager, "fetch_order_detail", new_callable=AsyncMock) as mock_detail:
+        with patch.object(
+            coupang_manager, "fetch_order_detail", new_callable=AsyncMock
+        ) as mock_detail:
             mock_detail.return_value = {
                 "orderId": "123456",
                 "orderedAt": "2024-01-01T10:00:00Z",

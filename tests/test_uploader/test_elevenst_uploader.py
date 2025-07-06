@@ -7,10 +7,12 @@ from dropshipping.storage.base import BaseStorage
 from dropshipping.uploader.elevenst_api.elevenst_uploader import ElevenstUploader
 from dropshipping.uploader.registry import UploaderRegistry
 
+
 @pytest.fixture
 def mock_storage():
     """Mock BaseStorage."""
     return MagicMock(spec=BaseStorage)
+
 
 @pytest.fixture
 def elevenst_config():
@@ -21,12 +23,14 @@ def elevenst_config():
         test_mode=True,
     )
 
+
 @pytest.fixture
 def uploader_registry():
     """Fixture for UploaderRegistry with ElevenstUploader registered."""
     registry = UploaderRegistry()
     registry.register("elevenst", ElevenstUploader)
     return registry
+
 
 @pytest.mark.asyncio
 async def test_get_uploader_with_dependency_injection(
@@ -48,6 +52,7 @@ async def test_get_uploader_with_dependency_injection(
     assert uploader.seller_id == "test_seller_id"
     assert uploader.test_mode is True
 
+
 @pytest.mark.asyncio
 async def test_elevenst_uploader_uses_config_values(
     mock_storage: BaseStorage, elevenst_config: ElevenstConfig
@@ -68,12 +73,14 @@ async def test_elevenst_uploader_uses_config_values(
         stock=20,
         category_name="의류/여성의류",
         images=[],
-        description="<p>11st Test Description</p>"
+        description="<p>11st Test Description</p>",
     )
 
     product_data = await uploader.transform_product(product)
 
-    assert product_data["Product"]["dispCtgrNo"] == elevenst_config.category_mapping["의류/여성의류"]
+    assert (
+        product_data["Product"]["dispCtgrNo"] == elevenst_config.category_mapping["의류/여성의류"]
+    )
     assert product_data["Product"]["dlvCst1"] == str(elevenst_config.delivery_cost)
 
     # This test is simplified and doesn't call upload_single because it requires complex XML handling.

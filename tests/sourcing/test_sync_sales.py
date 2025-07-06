@@ -62,7 +62,7 @@ def mock_storage():
             },
         ]
     )
-    
+
     # Mock get_sales_data도 유지 (다른 테스트에서 사용할 수 있음)
     storage.get_sales_data = storage.list
 

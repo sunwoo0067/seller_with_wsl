@@ -55,7 +55,7 @@ class ProductVariant(BaseModel):
     status: ProductStatus = Field(default=ProductStatus.ACTIVE)
     barcode: Optional[str] = Field(None, description="바코드")
     attributes: Dict[str, Any] = Field(default_factory=dict, description="추가 속성")
-    
+
     @property
     def stock_quantity(self) -> int:
         """stock_quantity 속성 (하위 호환성)"""
@@ -64,7 +64,7 @@ class ProductVariant(BaseModel):
 
 class ShippingInfo(BaseModel):
     """배송 정보"""
-    
+
     method: str = Field(..., description="배송 방법")
     fee: float = Field(default=0, description="배송비")
     estimated_days_min: int = Field(default=2, description="최소 배송일")

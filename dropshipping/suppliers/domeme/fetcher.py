@@ -88,9 +88,7 @@ class DomemeFetcher(BaseFetcher):
             print(f"JSON 파싱 에러: {e} - 응답: {response_content[:200]}")
         return items
 
-    def _process_detail_response(
-        self, response_content: bytes, item_id: str
-    ) -> Optional[Dict]:
+    def _process_detail_response(self, response_content: bytes, item_id: str) -> Optional[Dict]:
         try:
             data = json.loads(response_content)
             if data.get("response", {}).get("result", {}).get("code") != "00":

@@ -10,10 +10,7 @@ from dropshipping.models.order import OrderStatus
 @pytest.fixture
 def manager(mocker):
     mock_storage = mocker.Mock()
-    return ElevenstOrderManager(
-        storage=mock_storage,
-        config={"api_key": "test_api_key"}
-    )
+    return ElevenstOrderManager(storage=mock_storage, config={"api_key": "test_api_key"})
 
 
 @pytest.mark.asyncio
@@ -82,9 +79,7 @@ async def test_fetch_order_detail_success(manager: ElevenstOrderManager, respx_m
     </orders>
     """
     url = f"{manager.base_url}/openapi/v1/orders/{marketplace_order_id}"
-    respx_mock.get(url).mock(
-        return_value=Response(200, text=mock_xml_response)
-    )
+    respx_mock.get(url).mock(return_value=Response(200, text=mock_xml_response))
 
     order_detail = await manager.fetch_order_detail(marketplace_order_id)
 
@@ -104,9 +99,7 @@ async def test_fetch_order_detail_api_error(manager: ElevenstOrderManager, respx
     </ErrorMessage>
     """
     url = f"{manager.base_url}/openapi/v1/orders/{marketplace_order_id}"
-    respx_mock.get(url).mock(
-        return_value=Response(200, text=mock_xml_response)
-    )
+    respx_mock.get(url).mock(return_value=Response(200, text=mock_xml_response))
 
     with pytest.raises(Exception, match="11st API Error: 잘못된 요청입니다."):
         await manager.fetch_order_detail(marketplace_order_id)
@@ -267,5 +260,3 @@ async def test_return_order_http_error(manager: ElevenstOrderManager, respx_mock
 
     result = await manager._return_order(marketplace_order_id)
     assert result is False
-
-

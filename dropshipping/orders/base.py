@@ -267,12 +267,15 @@ class BaseOrderManager(ABC):
                     updates["status"] = latest_order.status.value
 
                 # delivery status도 마찬가지로 문자열 비교
-                if latest_order.delivery and latest_order.delivery.status.value != order_data["delivery"]["status"]:
+                if (
+                    latest_order.delivery
+                    and latest_order.delivery.status.value != order_data["delivery"]["status"]
+                ):
                     updates["delivery.status"] = latest_order.delivery.status.value
 
-                if latest_order.delivery and latest_order.delivery.tracking_number != order_data["delivery"].get(
-                    "tracking_number"
-                ):
+                if latest_order.delivery and latest_order.delivery.tracking_number != order_data[
+                    "delivery"
+                ].get("tracking_number"):
                     updates["delivery.tracking_number"] = latest_order.delivery.tracking_number
                     updates["delivery.carrier"] = latest_order.delivery.carrier
 

@@ -29,7 +29,9 @@ from dropshipping.uploader.base import BaseUploader, MarketplaceType, UploadStat
 class GmarketExcelUploader(BaseUploader):
     """G마켓/옥션 Excel 업로더"""
 
-    def __init__(self, storage: BaseStorage, config: GmarketUploaderConfig, marketplace_type: MarketplaceType):
+    def __init__(
+        self, storage: BaseStorage, config: GmarketUploaderConfig, marketplace_type: MarketplaceType
+    ):
         super().__init__(marketplace_type, storage, config)
 
         # 설정
@@ -47,7 +49,9 @@ class GmarketExcelUploader(BaseUploader):
 
     async def upload_products_in_batch(self, products: List[StandardProduct]) -> Dict[str, Any]:
         """여러 상품 정보를 하나의 엑셀 파일로 생성합니다."""
-        raise NotImplementedError("Gmarket/Auction 일괄 엑셀 업로드 기능은 아직 구현되지 않았습니다.")
+        raise NotImplementedError(
+            "Gmarket/Auction 일괄 엑셀 업로드 기능은 아직 구현되지 않았습니다."
+        )
 
     async def update_stock(self, marketplace_product_id: str, stock: int) -> bool:
         """재고 수정 (엑셀 업로더는 미지원)"""
@@ -314,7 +318,9 @@ class GmarketExcelUploader(BaseUploader):
 
         # 파일명 생성
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        marketplace_name = "gmarket" if self.marketplace_type == MarketplaceType.GMARKET else "auction"
+        marketplace_name = (
+            "gmarket" if self.marketplace_type == MarketplaceType.GMARKET else "auction"
+        )
         filename = f"{marketplace_name}_upload_{timestamp}.xlsx"
         filepath = self.output_dir / filename
 

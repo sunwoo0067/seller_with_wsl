@@ -7,15 +7,17 @@ from dropshipping.suppliers.domeme.fetcher import DomemeFetcher
 from dropshipping.storage.supabase_storage import SupabaseStorage
 from dropshipping.config import settings
 
+
 @pytest.fixture
 def mock_domeme_settings():
     """도매매 API 키 설정을 Mock"""
-    with patch('dropshipping.config.DomemeConfig') as MockDomemeConfig:
+    with patch("dropshipping.config.DomemeConfig") as MockDomemeConfig:
         mock_domeme_instance = Mock()
         mock_domeme_instance.api_key = "test_domeme_api_key"
         mock_domeme_instance.api_url = "http://test.domeme.com/domeme/api/v1/"
         MockDomemeConfig.return_value = mock_domeme_instance
         yield
+
 
 @pytest.fixture
 def mock_supabase_storage():
@@ -25,6 +27,7 @@ def mock_supabase_storage():
     mock_storage.exists_by_hash.return_value = False
     return mock_storage
 
+
 @pytest.fixture
 def domeme_fetcher(mock_supabase_storage, mock_domeme_settings):
     """DomemeFetcher 인스턴스 픽스처"""
@@ -32,14 +35,16 @@ def domeme_fetcher(mock_supabase_storage, mock_domeme_settings):
         storage=mock_supabase_storage,
         supplier_name="domeme",
         api_key="test-api-key",
-        api_url="https://test.api.com"
+        api_url="https://test.api.com",
     )
+
 
 @pytest.fixture
 def mock_requests_get():
     """requests.get을 Mock"""
-    with patch('requests.get') as mock_get:
+    with patch("requests.get") as mock_get:
         yield mock_get
+
 
 def test_fetch_list_success(domeme_fetcher, mock_requests_get):
     """fetch_list 성공 테스트"""
@@ -69,13 +74,20 @@ def test_fetch_list_success(domeme_fetcher, mock_requests_get):
     products = domeme_fetcher.fetch_list(1)
 
     assert len(products) == 2
-    assert products[0]['id'] == 'P1'
-    assert products[1]['productNm'] == '상품2'
+    assert products[0]["id"] == "P1"
+    assert products[1]["productNm"] == "상품2"
     mock_requests_get.assert_called_once_with(
         "http://test.domeme.com/domeme/api/v1/searchProductList",
-        params={'apiKey': 'test_domeme_api_key', 'ver': '4.1', 'page': 1, 'pageSize': 100, 'market': 'supply'},
-        timeout=10
+        params={
+            "apiKey": "test_domeme_api_key",
+            "ver": "4.1",
+            "page": 1,
+            "pageSize": 100,
+            "market": "supply",
+        },
+        timeout=10,
     )
+
 
 def test_fetch_list_api_failure(domeme_fetcher, mock_requests_get):
     """fetch_list API 호출 실패 테스트"""
@@ -84,6 +96,7 @@ def test_fetch_list_api_failure(domeme_fetcher, mock_requests_get):
     products = domeme_fetcher.fetch_list(1)
 
     assert len(products) == 0
+
 
 def test_fetch_list_xml_error(domeme_fetcher, mock_requests_get):
     """fetch_list XML 파싱 에러 테스트"""
@@ -95,6 +108,7 @@ def test_fetch_list_xml_error(domeme_fetcher, mock_requests_get):
     products = domeme_fetcher.fetch_list(1)
 
     assert len(products) == 0
+
 
 def test_fetch_detail_success(domeme_fetcher, mock_requests_get):
     """fetch_detail 성공 테스트"""
@@ -112,23 +126,25 @@ def test_fetch_detail_success(domeme_fetcher, mock_requests_get):
     </result>"""
     mock_requests_get.return_value = mock_response
 
-    detail = domeme_fetcher.fetch_detail('P1')
+    detail = domeme_fetcher.fetch_detail("P1")
 
-    assert detail['id'] == 'P1'
-    assert detail['productNm'] == '상품1 상세'
+    assert detail["id"] == "P1"
+    assert detail["productNm"] == "상품1 상세"
     mock_requests_get.assert_called_once_with(
         "http://test.domeme.com/domeme/api/v1/searchProductInfo",
-        params={'apiKey': 'test_domeme_api_key', 'ver': '4.5', 'productNo': 'P1'},
-        timeout=10
+        params={"apiKey": "test_domeme_api_key", "ver": "4.5", "productNo": "P1"},
+        timeout=10,
     )
+
 
 def test_fetch_detail_api_failure(domeme_fetcher, mock_requests_get):
     """fetch_detail API 호출 실패 테스트"""
     mock_requests_get.side_effect = requests.exceptions.RequestException("API Error")
 
-    detail = domeme_fetcher.fetch_detail('P1')
+    detail = domeme_fetcher.fetch_detail("P1")
 
     assert detail == {}
+
 
 def test_run_incremental_new_items(domeme_fetcher, mock_requests_get, mock_supabase_storage):
     """run_incremental 새 상품 수집 테스트"""
@@ -178,12 +194,12 @@ def test_run_incremental_new_items(domeme_fetcher, mock_requests_get, mock_supab
     <result><code>00</code><message>성공</message><product><productNo>OLD1</productNo><name>Old Product 1</name></product></result>"""
 
     mock_requests_get.side_effect = [
-        list_response_page1, # fetch_list(1)
-        detail_response_new1, # fetch_detail(NEW1)
-        detail_response_new2, # fetch_detail(NEW2)
-        list_response_page2, # fetch_list(2)
-        detail_response_old1, # fetch_detail(OLD1)
-        list_response_page3, # fetch_list(3) - no more items
+        list_response_page1,  # fetch_list(1)
+        detail_response_new1,  # fetch_detail(NEW1)
+        detail_response_new2,  # fetch_detail(NEW2)
+        list_response_page2,  # fetch_list(2)
+        detail_response_old1,  # fetch_detail(OLD1)
+        list_response_page3,  # fetch_list(3) - no more items
     ]
 
     # since 날짜를 현재 날짜보다 이전으로 설정하여 새 상품만 가져오도록 함
@@ -192,9 +208,10 @@ def test_run_incremental_new_items(domeme_fetcher, mock_requests_get, mock_supab
     # NEW1, NEW2만 저장되어야 함
     assert mock_supabase_storage.save_raw_product.call_count == 2
     args, kwargs = mock_supabase_storage.save_raw_product.call_args_list[0]
-    assert kwargs['raw_data']['supplier_product_id'] == 'NEW1'
+    assert kwargs["raw_data"]["supplier_product_id"] == "NEW1"
     args, kwargs = mock_supabase_storage.save_raw_product.call_args_list[1]
-    assert kwargs['raw_data']['supplier_product_id'] == 'NEW2'
+    assert kwargs["raw_data"]["supplier_product_id"] == "NEW2"
+
 
 def test_run_incremental_old_items_stop(domeme_fetcher, mock_requests_get, mock_supabase_storage):
     """run_incremental 오래된 상품 발견 시 중단 테스트"""
@@ -218,8 +235,8 @@ def test_run_incremental_old_items_stop(domeme_fetcher, mock_requests_get, mock_
     <result><code>00</code><message>성공</message><product><productNo>NEW1</productNo><name>New Product 1</name></product></result>"""
 
     mock_requests_get.side_effect = [
-        list_response_page1, # fetch_list(1)
-        detail_response_new1, # fetch_detail(NEW1)
+        list_response_page1,  # fetch_list(1)
+        detail_response_new1,  # fetch_detail(NEW1)
     ]
 
     # since 날짜를 OLD1의 regDate와 동일하게 설정하여 OLD1에서 중단되도록 함
@@ -228,7 +245,8 @@ def test_run_incremental_old_items_stop(domeme_fetcher, mock_requests_get, mock_
     # NEW1만 저장되어야 함
     assert mock_supabase_storage.save_raw_product.call_count == 1
     args, kwargs = mock_supabase_storage.save_raw_product.call_args_list[0]
-    assert kwargs['raw_data']['supplier_product_id'] == 'NEW1'
+    assert kwargs["raw_data"]["supplier_product_id"] == "NEW1"
+
 
 def test_run_incremental_no_new_items(domeme_fetcher, mock_requests_get, mock_supabase_storage):
     """run_incremental 새 상품이 없을 때 테스트"""
@@ -245,7 +263,7 @@ def test_run_incremental_no_new_items(domeme_fetcher, mock_requests_get, mock_su
     </result>"""
 
     mock_requests_get.side_effect = [
-        list_response_page1, # fetch_list(1)
+        list_response_page1,  # fetch_list(1)
     ]
 
     # since 날짜를 현재 날짜보다 이후로 설정하여 아무것도 가져오지 않도록 함
@@ -253,4 +271,3 @@ def test_run_incremental_no_new_items(domeme_fetcher, mock_requests_get, mock_su
 
     # 아무것도 저장되지 않아야 함
     mock_supabase_storage.save_raw_product.assert_not_called()
-

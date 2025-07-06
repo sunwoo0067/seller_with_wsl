@@ -18,8 +18,9 @@ def coupang_config(tmp_path) -> CoupangConfig:
         secret_key="test_secret_key",
         vendor_id="test_vendor_id",
         test_mode=True,
-        category_mapping={"의류": "513"}, # 예: 의류 -> 여성의류
+        category_mapping={"의류": "513"},  # 예: 의류 -> 여성의류
     )
+
 
 @pytest.fixture
 def coupang_uploader(coupang_config):
@@ -27,6 +28,7 @@ def coupang_uploader(coupang_config):
     mock_storage = Mock(spec=BaseStorage)
     uploader = CoupangUploader(storage=mock_storage, config=coupang_config)
     return uploader
+
 
 @pytest.fixture
 def sample_standard_product():
@@ -39,16 +41,16 @@ def sample_standard_product():
         brand="테스트 브랜드",
         manufacturer="테스트 제조사",
         origin="한국",
-        cost=Decimal('10000'),
-        price=Decimal('15000'),
-        list_price=Decimal('20000'),
+        cost=Decimal("10000"),
+        price=Decimal("15000"),
+        list_price=Decimal("20000"),
         stock=100,
         status=ProductStatus.ACTIVE,
         category_name="의류",
         category_path=["패션", "의류"],
         images=[ProductImage(url="http://example.com/image.jpg", is_main=True)],
         options=[],
-        attributes={}
+        attributes={},
     )
 
 
@@ -68,14 +70,14 @@ async def test_upload_product_success(coupang_uploader, sample_standard_product)
     # Then
     assert result["status"] == "uploaded"
     assert result["marketplace_product_id"] == "test_product_123"
-    assert 'coupang.com' in result['marketplace_url']
+    assert "coupang.com" in result["marketplace_url"]
     assert respx.calls.call_count == 1
 
 
 async def test_upload_product_failure_on_validation(coupang_uploader, sample_standard_product):
     """상품 업로드 실패 테스트 (검증 오류)"""
     # Given
-    sample_standard_product.category_name = "없는 카테고리" # 지원하지 않는 카테고리
+    sample_standard_product.category_name = "없는 카테고리"  # 지원하지 않는 카테고리
 
     # When
     result = await coupang_uploader.upload_product(sample_standard_product)
@@ -83,7 +85,7 @@ async def test_upload_product_failure_on_validation(coupang_uploader, sample_sta
     # Then
     assert result["status"] == "failed"
     assert "지원하지 않는 카테고리" in result["error_message"]
-    assert result.get('marketplace_product_id') is None
+    assert result.get("marketplace_product_id") is None
 
 
 async def test_update_stock_raises_not_implemented(coupang_uploader):
@@ -103,7 +105,9 @@ async def test_check_upload_status(coupang_uploader):
     """상품 상태 확인 테스트"""
     # Given
     marketplace_product_id = "12345"
-    respx.get(f"https://api-gateway-it.coupang.com/v2/providers/seller_api/v1/products/status/{marketplace_product_id}").mock(
+    respx.get(
+        f"https://api-gateway-it.coupang.com/v2/providers/seller_api/v1/products/status/{marketplace_product_id}"
+    ).mock(
         return_value=httpx.Response(200, json={"code": "SUCCESS", "data": {"status": "APPROVED"}})
     )
 

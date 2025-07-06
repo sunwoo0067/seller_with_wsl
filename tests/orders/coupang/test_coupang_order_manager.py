@@ -43,7 +43,7 @@ async def test_fetch_orders(manager: CoupangOrderManager):
     # Given: Mock a successful API response with pagination
     base_url = manager.base_url
     path = f"/v2/providers/openapi/apis/api/v4/vendors/{manager.vendor_id}/ordersheets"
-    
+
     mock_response_page1 = {
         "code": "SUCCESS",
         "message": "OK",
@@ -57,10 +57,12 @@ async def test_fetch_orders(manager: CoupangOrderManager):
         "nextToken": None,
     }
 
-    respx.get(url__regex=f"{base_url}{path}.*").mock(side_effect=[
-        Response(200, json=mock_response_page1),
-        Response(200, json=mock_response_page2),
-    ])
+    respx.get(url__regex=f"{base_url}{path}.*").mock(
+        side_effect=[
+            Response(200, json=mock_response_page1),
+            Response(200, json=mock_response_page2),
+        ]
+    )
 
     # When: Fetching orders
     start_date = datetime(2023, 1, 1)
@@ -142,7 +144,9 @@ async def test_update_tracking_info_success(manager: CoupangOrderManager):
     # Given: Mock a successful shipment update response
     order_id = "54321"
     base_url = manager.base_url
-    path = f"/v2/providers/openapi/apis/api/v4/vendors/{manager.vendor_id}/orders/{order_id}/shipment"
+    path = (
+        f"/v2/providers/openapi/apis/api/v4/vendors/{manager.vendor_id}/orders/{order_id}/shipment"
+    )
     respx.post(f"{base_url}{path}").mock(return_value=Response(200, json={"code": "SUCCESS"}))
 
     # When: Updating tracking info

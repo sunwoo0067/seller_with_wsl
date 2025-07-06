@@ -3,10 +3,12 @@ from decimal import Decimal
 from dropshipping.suppliers.ownerclan.transformer import OwnerclanTransformer
 from dropshipping.models.product import StandardProduct, ProductStatus
 
+
 @pytest.fixture
 def transformer():
     """Returns an OwnerclanTransformer instance."""
     return OwnerclanTransformer()
+
 
 @pytest.fixture
 def raw_single_product():
@@ -30,6 +32,7 @@ def raw_single_product():
         "returnable": True,
     }
 
+
 @pytest.fixture
 def raw_variant_product():
     """A raw product dictionary for an item with options."""
@@ -38,7 +41,7 @@ def raw_variant_product():
         "name": "옵션 티셔츠",
         "price": 15000.0,
         "fixed_price": 0,
-        "stock": 100, # This stock is calculated by parser from options
+        "stock": 100,  # This stock is calculated by parser from options
         "brand": "옵션 브랜드",
         "origin": "중국",
         "category": "의류/상의/반팔티",
@@ -71,6 +74,7 @@ def raw_variant_product():
         "returnable": True,
     }
 
+
 def test_transform_single_product(transformer, raw_single_product):
     """Tests transformation of a single product without variants."""
     product = transformer.to_standard(raw_single_product)
@@ -82,7 +86,7 @@ def test_transform_single_product(transformer, raw_single_product):
     assert product.brand == "기본 브랜드"
     assert product.cost == Decimal("10000.0")
     assert product.list_price == Decimal("12000.0")
-    assert product.price == Decimal("13000.0") # 10000 * 1.3, rounded
+    assert product.price == Decimal("13000.0")  # 10000 * 1.3, rounded
     assert product.stock == 50
     assert product.status == ProductStatus.ACTIVE
     assert len(product.images) == 1
@@ -93,6 +97,7 @@ def test_transform_single_product(transformer, raw_single_product):
     assert product.shipping_fee == Decimal("3000.0")
     assert product.is_free_shipping is False
 
+
 def test_transform_variant_product(transformer, raw_variant_product):
     """Tests transformation of a product with variants."""
     product = transformer.to_standard(raw_variant_product)
@@ -101,9 +106,9 @@ def test_transform_variant_product(transformer, raw_variant_product):
     assert product.id == "ownerclan_67890"
     assert product.name == "옵션 티셔츠"
     assert product.cost == Decimal("15000.0")
-    assert product.list_price is None # fixed_price is 0
-    assert product.price == Decimal("19500.0") # 15000 * 1.3
-    assert product.stock == 100 # Sum of variant stocks
+    assert product.list_price is None  # fixed_price is 0
+    assert product.price == Decimal("19500.0")  # 15000 * 1.3
+    assert product.stock == 100  # Sum of variant stocks
     assert len(product.images) == 2
     assert product.images[0].is_main is True
     assert product.images[1].is_main is False
@@ -131,8 +136,9 @@ def test_transform_variant_product(transformer, raw_variant_product):
     assert variant3.options == {"색상": "블랙", "사이즈": "L"}
     assert variant3.price == Decimal("16000.0")
     assert variant3.stock == 40
-    
+
     assert product.is_free_shipping is True
+
 
 def test_transform_invalid_product(transformer):
     """Tests transformation with missing required fields."""
@@ -150,8 +156,9 @@ def test_transform_invalid_product(transformer):
     product3 = transformer.to_standard({})
     assert product3 is None
 
+
 def test_calculate_selling_price(transformer):
     """Tests the selling price calculation logic."""
     assert transformer._calculate_selling_price(10000) == 13000
-    assert transformer._calculate_selling_price(12345) == 16000 # 12345 * 1.3 = 16048.5 -> 16000
-    assert transformer._calculate_selling_price(99) == 100 # 99 * 1.3 = 128.7 -> 100
+    assert transformer._calculate_selling_price(12345) == 16000  # 12345 * 1.3 = 16048.5 -> 16000
+    assert transformer._calculate_selling_price(99) == 100  # 99 * 1.3 = 128.7 -> 100

@@ -6,6 +6,7 @@ from typing import Dict, List, Optional
 
 from dropshipping.storage.supabase_storage import SupabaseStorage
 
+
 class BaseFetcher(abc.ABC):
     """
     모든 공급사 Fetcher의 추상 기본 클래스.
@@ -37,7 +38,7 @@ class BaseFetcher(abc.ABC):
         상품 데이터의 해시를 계산하여 중복 체크에 사용합니다.
         """
         # JSON 직렬화 시 키 순서를 정렬하여 일관된 해시 생성
-        return hashlib.sha256(json.dumps(data, sort_keys=True).encode('utf-8')).hexdigest()
+        return hashlib.sha256(json.dumps(data, sort_keys=True).encode("utf-8")).hexdigest()
 
     def _save_raw(self, supplier_id: str, supplier_product_id: str, raw_json: Dict) -> bool:
         """
@@ -51,7 +52,7 @@ class BaseFetcher(abc.ABC):
                     "supplier_id": supplier_id,
                     "supplier_product_id": supplier_product_id,
                     "raw_json": raw_json,
-                    "data_hash": data_hash
+                    "data_hash": data_hash,
                 }
             )
             print(f"Raw product saved: {supplier_product_id}")
@@ -79,7 +80,9 @@ class BaseFetcher(abc.ABC):
                 break
 
             for item in items:
-                item_id = item.get('id') or item.get('product_id') # Assuming 'id' or 'product_id' is present
+                item_id = item.get("id") or item.get(
+                    "product_id"
+                )  # Assuming 'id' or 'product_id' is present
                 if not item_id:
                     print(f"Warning: Item without ID found: {item}")
                     continue

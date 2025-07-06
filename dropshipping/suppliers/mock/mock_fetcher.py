@@ -21,12 +21,7 @@ class MockFetcher(BaseFetcher):
         self._generated_products = []  # 생성된 상품 캐시
         self._generate_all_products()
         # 통계 추가
-        self._stats = {
-            "fetched": 0,
-            "saved": 0,
-            "duplicates": 0,
-            "errors": 0
-        }
+        self._stats = {"fetched": 0, "saved": 0, "duplicates": 0, "errors": 0}
 
     def _generate_all_products(self):
         """모든 상품 미리 생성 (일관성 보장)"""
@@ -138,7 +133,7 @@ class MockFetcher(BaseFetcher):
     def set_products_per_page(self, count: int):
         """테스트용: 페이지당 상품 수 설정"""
         self.products_per_page = count
-    
+
     @property
     def stats(self):
         """통계 반환"""

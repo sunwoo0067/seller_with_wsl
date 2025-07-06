@@ -30,7 +30,7 @@ def zentrade_fetcher(mock_storage):
         supplier_name="zentrade",
         ftp_host="ftp.zentrade.co.kr",
         ftp_user="test_user",
-        ftp_pass="test_pass"
+        ftp_pass="test_pass",
     )
 
 
@@ -73,7 +73,7 @@ def sample_xml_data():
             <status>active</status>
         </product>
     </products>"""
-    return xml_str.encode('utf-8')
+    return xml_str.encode("utf-8")
 
 
 @pytest.fixture
@@ -93,62 +93,60 @@ def parsed_product():
         "options": {
             "items": [
                 {"name": "색상", "value": "블랙", "price": 10000, "stock": 25},
-                {"name": "색상", "value": "화이트", "price": 10000, "stock": 25}
+                {"name": "색상", "value": "화이트", "price": 10000, "stock": 25},
             ],
-            "groups": [
-                {"name": "색상", "values": ["블랙", "화이트"]}
-            ]
+            "groups": [{"name": "색상", "values": ["블랙", "화이트"]}],
         },
         "shipping_fee": 3000,
         "shipping_method": "기본배송",
-        "shipping_free_condition": 50000
+        "shipping_free_condition": 50000,
     }
 
 
 class TestZentradeFetcher:
     """Zentrade Fetcher 테스트"""
-    
-    @patch('ftplib.FTP')
+
+    @patch("ftplib.FTP")
     def test_connect_ftp(self, mock_ftp_class, zentrade_fetcher):
         """FTP 연결 테스트"""
         mock_ftp = Mock()
         mock_ftp_class.return_value = mock_ftp
-        
+
         ftp = zentrade_fetcher._connect_ftp()
-        
+
         assert ftp == mock_ftp
         mock_ftp.connect.assert_called_once_with("ftp.zentrade.co.kr", timeout=30)
         mock_ftp.login.assert_called_once_with("test_user", "test_pass")
-    
+
     def test_parse_xml(self, zentrade_fetcher, sample_xml_data):
         """XML 파싱 테스트"""
         products = zentrade_fetcher._parse_xml(sample_xml_data)
-        
+
         assert len(products) == 2
         assert products[0]["id"] == "ZT001"
         assert products[0]["name"] == "테스트 상품 1"
         assert len(products[0]["images"]) == 2
         assert len(products[0]["options"]) == 2
-    
-    @patch('ftplib.FTP')
+
+    @patch("ftplib.FTP")
     def test_fetch_list(self, mock_ftp_class, zentrade_fetcher, sample_xml_data):
         """상품 목록 조회 테스트"""
         # FTP 모킹
         mock_ftp = Mock()
         mock_ftp_class.return_value = mock_ftp
-        
+
         # 파일 목록 모킹
         files = [
             "drwxr-xr-x    2 user  group  4096 Jan 1 00:00 .",
-            "-rw-r--r--    1 user  group  1234 Jan 1 00:00 products.xml"
+            "-rw-r--r--    1 user  group  1234 Jan 1 00:00 products.xml",
         ]
         mock_ftp.retrlines.side_effect = lambda cmd, callback: [callback(f) for f in files]
-        
+
         # 파일 다운로드 모킹
         mock_ftp.retrbinary.side_effect = lambda cmd, callback: callback(sample_xml_data)
-        
+
         products = zentrade_fetcher.fetch_list()
-        
+
         assert len(products) == 2
         assert products[0]["id"] == "ZT001"
         mock_ftp.quit.assert_called_once()
@@ -156,31 +154,31 @@ class TestZentradeFetcher:
 
 class TestZentradeParser:
     """Zentrade Parser 테스트"""
-    
+
     def test_parse_products(self):
         """상품 목록 파싱 테스트"""
         parser = ZentradeParser()
         raw_products = [
             {"id": "ZT001", "name": "상품1", "price": 10000},
-            {"id": "ZT002", "name": "상품2", "price": 20000}
+            {"id": "ZT002", "name": "상품2", "price": 20000},
         ]
-        
+
         products = parser.parse_products(raw_products)
-        
+
         assert len(products) == 2
         assert products[0]["id"] == "ZT001"
         assert products[0]["price"] == 10000
-    
+
     def test_normalize_product(self, parsed_product):
         """상품 정규화 테스트"""
         parser = ZentradeParser()
         product = parser._normalize_product(parsed_product)
-        
+
         assert product["id"] == "ZT001"
         assert product["status"] == "active"
         assert product["shipping_fee"] == 3000
         assert product["stock"] == 50
-        
+
         # 옵션 처리 확인
         options = product["options"]
         assert len(options["items"]) == 2
@@ -190,12 +188,12 @@ class TestZentradeParser:
 
 class TestZentradeTransformer:
     """Zentrade Transformer 테스트"""
-    
+
     def test_transform_basic(self, parsed_product):
         """기본 변환 테스트"""
         transformer = ZentradeTransformer()
         product = transformer.to_standard(parsed_product)
-        
+
         assert isinstance(product, StandardProduct)
         assert product.supplier_id == "zentrade"
         assert product.supplier_product_id == "ZT001"
@@ -204,24 +202,24 @@ class TestZentradeTransformer:
         assert float(product.cost) == 10000
         assert float(product.price) == 13000  # 30% 마진
         assert product.stock == 50
-    
+
     def test_transform_options(self, parsed_product):
         """옵션 변환 테스트"""
         transformer = ZentradeTransformer()
         product = transformer.to_standard(parsed_product)
-        
+
         assert len(product.options) == 1
         assert product.options[0].name == "색상"
         assert set(product.options[0].values) == {"블랙", "화이트"}
-        
+
         assert len(product.variants) == 2
         assert product.variants[0].stock == 25
-    
+
     def test_transform_shipping(self, parsed_product):
         """배송 정보 변환 테스트"""
         transformer = ZentradeTransformer()
         product = transformer.to_standard(parsed_product)
-        
+
         assert product.shipping_method == "조건부 무료배송"
         assert float(product.shipping_fee) == 3000
         assert not product.is_free_shipping
@@ -230,37 +228,37 @@ class TestZentradeTransformer:
 @pytest.mark.integration
 class TestZentradeIntegration:
     """젠트레이드 통합 테스트"""
-    
-    @patch('ftplib.FTP')
+
+    @patch("ftplib.FTP")
     def test_full_pipeline(self, mock_ftp_class, mock_storage, sample_xml_data):
         """전체 파이프라인 테스트"""
         # FTP 모킹
         mock_ftp = Mock()
         mock_ftp_class.return_value = mock_ftp
-        
+
         files = ["-rw-r--r-- 1 user group 1234 Jan 1 00:00 products.xml"]
         mock_ftp.retrlines.side_effect = lambda cmd, callback: [callback(f) for f in files]
         mock_ftp.retrbinary.side_effect = lambda cmd, callback: callback(sample_xml_data)
-        
+
         # 컴포넌트 초기화
         fetcher = ZentradeFetcher(
             storage=mock_storage,
             supplier_name="zentrade",
             ftp_host="ftp.zentrade.co.kr",
             ftp_user="test",
-            ftp_pass="test"
+            ftp_pass="test",
         )
         parser = ZentradeParser()
         transformer = ZentradeTransformer()
-        
+
         # 실행
         raw_products = fetcher.fetch_list()
         parsed_products = parser.parse_products(raw_products)
-        
+
         # 첫 번째 상품 변환
         parsed = parser._normalize_product(parsed_products[0])
         standard_product = transformer.to_standard(parsed)
-        
+
         # 검증
         assert standard_product is not None
         assert standard_product.supplier_product_id == "ZT001"

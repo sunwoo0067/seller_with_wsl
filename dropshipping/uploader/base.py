@@ -8,12 +8,14 @@ from dropshipping.models.product import StandardProduct
 from dropshipping.storage.base import BaseStorage
 from dropshipping.config import settings, Settings
 
+
 class MarketplaceType(str, Enum):
     COUPANG = "coupang"
     ELEVENST = "elevenst"
     SMARTSTORE = "smartstore"
     GMARKET = "gmarket"
     AUCTION = "auction"
+
 
 class UploadStatus(str, Enum):
     PENDING = "pending"
@@ -22,13 +24,16 @@ class UploadStatus(str, Enum):
     FAILED = "failed"
     CANCELLED = "cancelled"
 
+
 class BaseUploader(abc.ABC):
     """
     모든 마켓플레이스 업로더의 추상 기본 클래스.
     상품 업로드, 재고 업데이트, 가격 업데이트 등의 공통 인터페이스를 정의합니다.
     """
 
-    def __init__(self, marketplace_type: MarketplaceType, storage: BaseStorage, config: BaseSettings):
+    def __init__(
+        self, marketplace_type: MarketplaceType, storage: BaseStorage, config: BaseSettings
+    ):
         self.marketplace_type = marketplace_type
         self.storage = storage
         self.config = config

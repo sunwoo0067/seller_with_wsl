@@ -95,7 +95,7 @@ class ElevenstOrderManager(BaseOrderManager):
                     error_text = "Unknown error"
                     if message_element is not None and message_element.text:
                         error_text = message_element.text.strip()
-                    
+
                     raise Exception(f"11st API Error: {error_text}")
 
                 logger.debug(f"API 요청 성공: {method} {path}")
@@ -130,10 +130,7 @@ class ElevenstOrderManager(BaseOrderManager):
 
         root = await self._api_request("GET", "/openapi/v1/orders", params=params)
 
-        orders = [
-            self._xml_to_dict(order_elem)
-            for order_elem in root.findall(".//order")
-        ]
+        orders = [self._xml_to_dict(order_elem) for order_elem in root.findall(".//order")]
 
         logger.info(f"11번가 주문 {len(orders)}건 조회 완료")
         return orders

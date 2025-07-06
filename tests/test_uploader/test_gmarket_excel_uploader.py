@@ -28,7 +28,7 @@ def gmarket_config():
         seller_code="test_seller",
         shipping_address="test_shipping_address",
         return_address="test_return_address",
-        category_mapping={"전자기기/이어폰": "200001541"}  # Add mapping for the test
+        category_mapping={"전자기기/이어폰": "200001541"},  # Add mapping for the test
     )
 
 
@@ -66,9 +66,7 @@ def test_gmarket_excel_uploader_initialization(
 ):
     """Test GmarketExcelUploader initialization for both Gmarket and Auction."""
     uploader = GmarketExcelUploader(
-        storage=mock_storage,
-        config=gmarket_config,
-        marketplace_type=marketplace_type
+        storage=mock_storage, config=gmarket_config, marketplace_type=marketplace_type
     )
 
     assert uploader.storage is mock_storage
@@ -81,9 +79,7 @@ def test_gmarket_excel_uploader_initialization(
 async def test_transform_product(gmarket_config, sample_product):
     """Test the transformation of a StandardProduct to the Excel data format."""
     uploader = GmarketExcelUploader(
-        storage=MagicMock(),
-        config=gmarket_config,
-        marketplace_type=MarketplaceType.GMARKET
+        storage=MagicMock(), config=gmarket_config, marketplace_type=MarketplaceType.GMARKET
     )
 
     excel_data = await uploader.transform_product(sample_product)
@@ -103,9 +99,7 @@ async def test_transform_product(gmarket_config, sample_product):
 async def test_upload_product_not_implemented(gmarket_config, sample_product):
     """Test that upload_product raises NotImplementedError."""
     uploader = GmarketExcelUploader(
-        storage=MagicMock(),
-        config=gmarket_config,
-        marketplace_type=MarketplaceType.GMARKET
+        storage=MagicMock(), config=gmarket_config, marketplace_type=MarketplaceType.GMARKET
     )
     with pytest.raises(NotImplementedError):
         await uploader.upload_product(sample_product)
@@ -114,9 +108,7 @@ async def test_upload_product_not_implemented(gmarket_config, sample_product):
 async def test_upload_products_in_batch_not_implemented(gmarket_config, sample_product):
     """Test that upload_products_in_batch raises NotImplementedError."""
     uploader = GmarketExcelUploader(
-        storage=MagicMock(),
-        config=gmarket_config,
-        marketplace_type=MarketplaceType.GMARKET
+        storage=MagicMock(), config=gmarket_config, marketplace_type=MarketplaceType.GMARKET
     )
     with pytest.raises(NotImplementedError):
         await uploader.upload_products_in_batch([sample_product])
