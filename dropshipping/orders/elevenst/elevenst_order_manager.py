@@ -69,6 +69,45 @@ class ElevenstOrderManager(BaseOrderManager):
             "SC0100": PaymentMethod.POINT,  # OK캐쉬백
         }
 
+    async def _api_request(
+        self,
+        method: str,
+        path: str,
+        params: Optional[Dict[str, Any]] = None,
+        data: Optional[str] = None,
+    ) -> ET.Element:
+        """중앙 API 요청 핸들러"""
+        url = f"{self.base_url}{path}"
+        headers = {"openapikey": self.api_key, "Content-Type": "application/xml"}
+
+        for attempt in range(self.max_retries):
+            try:
+                response = await self.client.request(
+                    method, url, params=params, content=data, headers=headers
+                )
+                response.raise_for_status()
+                root = ET.fromstring(response.text)
+
+                error_element = root if root.tag == "ErrorMessage" else root.find("ErrorMessage")
+
+                if error_element is not None:
+                    message_element = error_element.find("message")
+                    error_text = "Unknown error"
+                    if message_element is not None and message_element.text:
+                        error_text = message_element.text.strip()
+                    
+                    raise Exception(f"11st API Error: {error_text}")
+
+                logger.debug(f"API 요청 성공: {method} {path}")
+                return root
+
+            except (httpx.RequestError, httpx.HTTPStatusError) as e:
+                logger.warning(f"API 요청 실패 (시도 {attempt + 1}/{self.max_retries}): {e}")
+                if attempt == self.max_retries - 1:
+                    raise
+                await asyncio.sleep(5)
+        raise Exception("API 요청 최종 실패")
+
     async def fetch_orders(
         self,
         start_date: datetime,
@@ -76,69 +115,34 @@ class ElevenstOrderManager(BaseOrderManager):
         status: Optional[OrderStatus] = None,
     ) -> List[Dict[str, Any]]:
         """주문 목록 조회"""
-
         if not end_date:
             end_date = datetime.now()
-
-        # 11번가 API는 최대 3개월 조회 가능
         if (end_date - start_date).days > 90:
             raise ValueError("조회 기간은 90일을 초과할 수 없습니다")
 
-        # API 파라미터
         params = {
             "startDate": start_date.strftime("%Y%m%d"),
             "endDate": end_date.strftime("%Y%m%d"),
             "dataType": "xml",
         }
+        if status and (elevenst_status := self._get_elevenst_status(status)):
+            params["orderStatusCd"] = elevenst_status
 
-        # 상태 필터
-        if status:
-            elevenst_status = self._get_elevenst_status(status)
-            if elevenst_status:
-                params["orderStatusCd"] = elevenst_status
+        root = await self._api_request("GET", "/openapi/v1/orders", params=params)
 
-        # API 요청
-        url = f"{self.base_url}/openapi/v1/orders"
-        headers = {"openapikey": self.api_key, "Content-Type": "application/xml"}
-
-        response = await self.client.get(url, params=params, headers=headers)
-        response.raise_for_status()
-
-        # XML 파싱
-        root = ET.fromstring(response.text)
-
-        # 에러 체크
-        error = root.find("ErrorMessage")
-        if error is not None:
-            raise Exception(f"주문 조회 실패: {error.text}")
-
-        # 주문 목록 추출
-        orders = []
-        for order_elem in root.findall(".//order"):
-            order_dict = self._xml_to_dict(order_elem)
-            orders.append(order_dict)
+        orders = [
+            self._xml_to_dict(order_elem)
+            for order_elem in root.findall(".//order")
+        ]
 
         logger.info(f"11번가 주문 {len(orders)}건 조회 완료")
         return orders
 
     async def fetch_order_detail(self, marketplace_order_id: str) -> Dict[str, Any]:
         """주문 상세 조회"""
+        path = f"/openapi/v1/orders/{marketplace_order_id}"
+        root = await self._api_request("GET", path)
 
-        url = f"{self.base_url}/openapi/v1/orders/{marketplace_order_id}"
-        headers = {"openapikey": self.api_key, "Content-Type": "application/xml"}
-
-        response = await self.client.get(url, headers=headers)
-        response.raise_for_status()
-
-        # XML 파싱
-        root = ET.fromstring(response.text)
-
-        # 에러 체크
-        error = root.find("ErrorMessage")
-        if error is not None:
-            raise Exception(f"주문 상세 조회 실패: {error.text}")
-
-        # 주문 정보 추출
         order_elem = root.find(".//order")
         if order_elem is None:
             raise Exception("주문 정보를 찾을 수 없습니다")
@@ -257,29 +261,17 @@ class ElevenstOrderManager(BaseOrderManager):
         self, marketplace_order_id: str, carrier: str, tracking_number: str
     ) -> bool:
         """배송 정보 업데이트"""
-
-        url = f"{self.base_url}/openapi/v1/orders/{marketplace_order_id}/delivery"
-        headers = {"openapikey": self.api_key, "Content-Type": "application/xml"}
-
-        # 택배사 코드 변환
+        path = f"/openapi/v1/orders/{marketplace_order_id}/delivery"
         carrier_code = self._get_carrier_code(carrier)
+        xml_data = f'<?xml version="1.0" encoding="UTF-8"?><deliveryInfo><dlvEtprsCd>{carrier_code}</dlvEtprsCd><invcNo>{tracking_number}</invcNo></deliveryInfo>'
 
-        # XML 생성
-        xml_data = f"""<?xml version="1.0" encoding="UTF-8"?>
-        <deliveryInfo>
-            <dlvEtprsCd>{carrier_code}</dlvEtprsCd>
-            <invcNo>{tracking_number}</invcNo>
-        </deliveryInfo>"""
-
-        response = await self.client.put(url, content=xml_data, headers=headers)
-
-        if response.status_code == 200:
-            # 응답 확인
-            root = ET.fromstring(response.text)
+        try:
+            root = await self._api_request("PUT", path, data=xml_data)
             result = root.find(".//resultCode")
             return result is not None and result.text == "0"
-
-        return False
+        except Exception as e:
+            logger.error(f"송장 업데이트 실패: {e}")
+            return False
 
     def _xml_to_dict(self, element: ET.Element) -> Dict[str, Any]:
         """XML 요소를 딕셔너리로 변환"""
@@ -384,20 +376,22 @@ class ElevenstOrderManager(BaseOrderManager):
 
     async def _cancel_order(self, marketplace_order_id: str) -> bool:
         """주문 취소"""
-        url = f"{self.base_url}/openapi/v1/orders/{marketplace_order_id}/cancel"
-        headers = {"openapikey": self.api_key, "Content-Type": "application/xml"}
+        path = f"/openapi/v1/orders/{marketplace_order_id}/cancel"
+        xml_data = '<?xml version="1.0" encoding="UTF-8"?><cancelInfo><cancelReasonCd>100</cancelReasonCd><cancelReasonDetail>고객 요청에 의한 취소</cancelReasonDetail></cancelInfo>'
 
-        xml_data = """<?xml version="1.0" encoding="UTF-8"?>
-        <cancelInfo>
-            <cancelReasonCd>100</cancelReasonCd>
-            <cancelReasonDetail>고객 요청에 의한 취소</cancelReasonDetail>
-        </cancelInfo>"""
-
-        response = await self.client.post(url, content=xml_data, headers=headers)
-        return response.status_code == 200
+        try:
+            root = await self._api_request("POST", path, data=xml_data)
+            result = root.find(".//resultCode")
+            return result is not None and result.text == "0"
+        except Exception as e:
+            logger.error(f"주문 취소 실패: {e}")
+            return False
 
     async def _return_order(self, marketplace_order_id: str) -> bool:
         """주문 반품"""
+        # 반품 로직은 11번가 정책에 따라 구현 필요
+        logger.warning(f"주문 반품 기능은 아직 구현되지 않았습니다: {marketplace_order_id}")
+        return False
         url = f"{self.base_url}/openapi/v1/orders/{marketplace_order_id}/return"
         headers = {"openapikey": self.api_key, "Content-Type": "application/xml"}
 
