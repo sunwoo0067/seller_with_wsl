@@ -71,8 +71,11 @@ class OwnerclanParser(BaseParser):
         if isinstance(images, str):
             images = [images] if images else []
         
-        # 재고 수량 계산 (옵션별 재고 합계)
-        total_stock = sum(opt.get("quantity", 0) for opt in options)
+        # 재고 수량 계산
+        if options:
+            total_stock = sum(opt.get("quantity", 0) for opt in options)
+        else:
+            total_stock = int(node.get("stock") or 0)
         
         return {
             "id": node.get("key", ""),

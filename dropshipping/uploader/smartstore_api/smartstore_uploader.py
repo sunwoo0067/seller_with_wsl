@@ -8,46 +8,52 @@ from typing import Any, Dict, Optional, Tuple
 import httpx
 from loguru import logger
 
+from dropshipping.config import SmartstoreConfig
 from dropshipping.models.product import StandardProduct
+from dropshipping.storage.base import BaseStorage
 from dropshipping.uploader.base import BaseUploader, MarketplaceType
 
 
 class SmartstoreUploader(BaseUploader):
     """네이버 스마트스토어 업로더"""
 
-    def __init__(self, storage, config: Optional[Dict[str, Any]] = None):
-        """
-        초기화
-
-        Args:
-            storage: 저장소 인스턴스
-            config: 스마트스토어 API 설정
-                - client_id: 애플리케이션 ID
-                - client_secret: 애플리케이션 시크릿
-                - access_token: 액세스 토큰
-                - channel_id: 채널 ID
-        """
-        super().__init__(MarketplaceType.NAVER, storage, config)
+    def __init__(self, storage: BaseStorage, config: SmartstoreConfig):
+        super().__init__(MarketplaceType.SMARTSTORE, storage, config)
 
         # API 설정
-        self.client_id = self.config.get("client_id")
-        self.client_secret = self.config.get("client_secret")
-        self.access_token = self.config.get("access_token")
-        self.channel_id = self.config.get("channel_id")
-
-        # API 엔드포인트
-        self.base_url = "https://api.commerce.naver.com/external"
-
-        # 네이버 카테고리 매핑
-        self.category_mapping = {
-            "전자기기/이어폰": "50000190",  # 디지털/가전 > 이어폰/헤드폰
-            "의류/여성의류": "50000167",  # 패션의류 > 여성의류
-            "애완용품": "50000197",  # 생활/건강 > 반려동물용품
-            # 실제로는 더 많은 매핑 필요
-        }
+        self.client_id = self.config.client_id
+        self.client_secret = self.config.client_secret
+        self.access_token = self.config.access_token
+        self.channel_id = self.config.channel_id
+        self.base_url = self.config.base_url
+        self.category_mapping = self.config.category_mapping
 
         # HTTP 클라이언트
-        self.client = httpx.AsyncClient(timeout=30.0)
+        self.client = httpx.AsyncClient(
+            base_url=self.base_url,
+            headers={
+                "Authorization": f"Bearer {self.access_token}",
+                "client-id": self.client_id,
+                "client-secret": self.client_secret,
+            },
+            timeout=30.0,
+        )
+
+    async def upload_product(self, product: StandardProduct) -> Dict[str, Any]:
+        """상품을 마켓플레이스에 업로드합니다."""
+        raise NotImplementedError("스마트스토어 상품 업로드 기능은 아직 구현되지 않았습니다.")
+
+    async def update_stock(self, marketplace_product_id: str, stock: int) -> bool:
+        """재고 수정 (미구현)"""
+        raise NotImplementedError("스마트스토어 재고 수정 기능은 아직 구현되지 않았습니다.")
+
+    async def update_price(self, marketplace_product_id: str, price: float) -> bool:
+        """가격 수정 (미구현)"""
+        raise NotImplementedError("스마트스토어 가격 수정 기능은 아직 구현되지 않았습니다.")
+
+    async def check_upload_status(self, marketplace_product_id: str) -> Dict[str, Any]:
+        """상품 업로드 상태 확인 (미구현)"""
+        raise NotImplementedError("스마트스토어 상품 상태 확인 기능은 아직 구현되지 않았습니다.")
 
     async def validate_product(self, product: StandardProduct) -> Tuple[bool, Optional[str]]:
         """상품 검증"""
@@ -105,7 +111,7 @@ class SmartstoreUploader(BaseUploader):
                     "deliveryType": "DELIVERY",  # 택배배송
                     "deliveryAttributeType": "NORMAL",  # 일반배송
                     "deliveryCompany": "CJGLS",  # CJ대한통운
-                    "outboundLocationId": self.config.get("outbound_location_id", ""),
+                    "outboundLocationId": self.config.outbound_location_id,
                     "deliveryFee": {
                         "deliveryFeeType": "CONDITIONAL_FREE",  # 조건부 무료
                         "baseFee": 2500,
@@ -117,10 +123,10 @@ class SmartstoreUploader(BaseUploader):
                         "exchangeDeliveryFee": 5000,
                         "shippingAddress": {
                             "addressType": "ROADNAME",
-                            "baseAddress": self.config.get("return_address", ""),
-                            "detailAddress": self.config.get("return_detail_address", ""),
-                            "zipCode": self.config.get("return_zip_code", ""),
-                            "tel1": self.config.get("return_tel", ""),
+                            "baseAddress": self.config.return_address,
+                            "detailAddress": self.config.return_detail_address,
+                            "zipCode": self.config.return_zip_code,
+                            "tel1": self.config.return_tel,
                         },
                     },
                 },

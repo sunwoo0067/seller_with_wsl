@@ -28,7 +28,12 @@ def mock_supabase_storage():
 @pytest.fixture
 def domeme_fetcher(mock_supabase_storage, mock_domeme_settings):
     """DomemeFetcher 인스턴스 픽스처"""
-    return DomemeFetcher(mock_supabase_storage)
+    return DomemeFetcher(
+        storage=mock_supabase_storage,
+        supplier_name="domeme",
+        api_key="test-api-key",
+        api_url="https://test.api.com"
+    )
 
 @pytest.fixture
 def mock_requests_get():

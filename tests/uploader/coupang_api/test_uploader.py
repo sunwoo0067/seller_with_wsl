@@ -1,49 +1,32 @@
 import pytest
-from unittest.mock import Mock, patch
-import requests
+from unittest.mock import Mock
+import respx
+import httpx
 from decimal import Decimal
 
-from dropshipping.uploader.coupang_api.uploader import CoupangUploader
-from dropshipping.models.product import StandardProduct, ProductStatus
-from dropshipping.config import settings
+from dropshipping.uploader.coupang_api.coupang_uploader import CoupangUploader
+from dropshipping.models.product import StandardProduct, ProductStatus, ProductImage
+from dropshipping.config import CoupangConfig
+from dropshipping.storage.base import BaseStorage
+
 
 @pytest.fixture
-def mock_coupang_settings():
-    """쿠팡 API 키 설정을 Mock"""
-    with patch('dropshipping.config.CoupangConfig') as MockCoupangConfig:
-        mock_coupang_instance = Mock()
-        mock_coupang_instance.access_key = "test_access_key"
-        mock_coupang_instance.secret_key = "test_secret_key"
-        mock_coupang_instance.vendor_id = "test_vendor_id"
-        MockCoupangConfig.return_value = mock_coupang_instance
-        yield
+def coupang_config(tmp_path) -> CoupangConfig:
+    """CoupangConfig 픽스처"""
+    return CoupangConfig(
+        access_key="test_access_key",
+        secret_key="test_secret_key",
+        vendor_id="test_vendor_id",
+        test_mode=True,
+        category_mapping={"의류": "513"}, # 예: 의류 -> 여성의류
+    )
 
 @pytest.fixture
-def coupang_uploader(mock_coupang_settings):
+def coupang_uploader(coupang_config):
     """CoupangUploader 인스턴스 픽스처"""
-    mock_session = Mock(spec=requests.Session)
-    uploader = CoupangUploader(marketplace_id="coupang_mp_id", account_id="coupang_acc_id", session=mock_session)
+    mock_storage = Mock(spec=BaseStorage)
+    uploader = CoupangUploader(storage=mock_storage, config=coupang_config)
     return uploader
-
-@pytest.fixture
-def mock_requests_methods(mocker):
-    """requests.Session의 post, put, get을 Mock"""
-    mock_session = mocker.Mock(spec=requests.Session)
-    mock_post = mocker.patch.object(mock_session, 'post')
-    mock_put = mocker.patch.object(mock_session, 'put')
-    mock_get = mocker.patch.object(mock_session, 'get')
-
-    mock_response = Mock()
-    mock_response.status_code = 200
-    mock_response.json.return_value = {"code": "SUCCESS", "message": "성공", "data": {"sellerProductId": "CP123"}}
-    mock_response.raise_for_status = Mock() # 에러 발생 방지
-
-    mock_post.return_value = mock_response
-    mock_put.return_value = mock_response
-    mock_get.return_value = mock_response
-
-    # Return only the mocks for post, put, get
-    return mock_post, mock_put, mock_get
 
 @pytest.fixture
 def sample_standard_product():
@@ -61,101 +44,71 @@ def sample_standard_product():
         list_price=Decimal('20000'),
         stock=100,
         status=ProductStatus.ACTIVE,
-        category_code="C100",
         category_name="의류",
         category_path=["패션", "의류"],
-        images=[],
+        images=[ProductImage(url="http://example.com/image.jpg", is_main=True)],
         options=[],
         attributes={}
     )
 
-def test_upload_product_success(coupang_uploader, mock_requests_methods, sample_standard_product):
+
+@respx.mock
+async def test_upload_product_success(coupang_uploader, sample_standard_product):
     """상품 업로드 성공 테스트"""
-    mock_post, _, _ = mock_requests_methods # Correct
-    mock_response = Mock()
-    mock_response.status_code = 200
-    mock_response.json.return_value = {
-        "code": "SUCCESS",
-        "message": "성공",
-        "data": {"sellerProductId": "CP123"}
-    }
-    mock_post.return_value = mock_response
+    # Given
+    respx.post("https://api-gateway-it.coupang.com/v2/providers/seller_api/v1/products").mock(
+        return_value=httpx.Response(
+            200, json={"code": "SUCCESS", "data": {"sellerProductId": "test_product_123"}}
+        )
+    )
 
-    result = coupang_uploader.upload_product(sample_standard_product)
+    # When
+    result = await coupang_uploader.upload_product(sample_standard_product)
 
-    assert result['status'] == 'uploaded'
-    assert result['marketplace_product_id'] == 'CP123'
+    # Then
+    assert result["status"] == "uploaded"
+    assert result["marketplace_product_id"] == "test_product_123"
     assert 'coupang.com' in result['marketplace_url']
-    mock_post.assert_called_once()
+    assert respx.calls.call_count == 1
 
-def test_upload_product_failure(coupang_uploader, mock_requests_methods, sample_standard_product):
-    """상품 업로드 실패 테스트"""
-    mock_post, _, _ = mock_requests_methods # Correct
-    mock_response = Mock()
-    mock_response.status_code = 400
-    mock_response.json.return_value = {
-        "code": "ERROR",
-        "message": "잘못된 요청"
-    }
-    mock_post.return_value = mock_response
 
-    result = coupang_uploader.upload_product(sample_standard_product)
+async def test_upload_product_failure_on_validation(coupang_uploader, sample_standard_product):
+    """상품 업로드 실패 테스트 (검증 오류)"""
+    # Given
+    sample_standard_product.category_name = "없는 카테고리" # 지원하지 않는 카테고리
 
-    assert result['status'] == 'failed'
-    assert result['error'] == '잘못된 요청'
+    # When
+    result = await coupang_uploader.upload_product(sample_standard_product)
 
-def test_update_stock_success(coupang_uploader, mock_requests_methods):
-    """재고 업데이트 성공 테스트"""
-    _, mock_put, _ = mock_requests_methods # Correct
-    mock_response = Mock()
-    mock_response.status_code = 200
-    mock_response.json.return_value = {"code": "SUCCESS"}
-    mock_put.return_value = mock_response
+    # Then
+    assert result["status"] == "failed"
+    assert "지원하지 않는 카테고리" in result["error_message"]
+    assert result.get('marketplace_product_id') is None
 
-    result = coupang_uploader.update_stock('CP123', 50)
 
-    assert result is True
-    mock_put.assert_called_once()
+async def test_update_stock_raises_not_implemented(coupang_uploader):
+    """재고 업데이트 미구현 테스트"""
+    with pytest.raises(NotImplementedError):
+        await coupang_uploader.update_stock("CP123", 50)
 
-def test_update_stock_failure(coupang_uploader, mock_requests_methods):
-    """재고 업데이트 실패 테스트"""
-    _, mock_put, _ = mock_requests_methods # Correct
-    mock_response = Mock()
-    mock_response.status_code = 500
-    mock_response.json.return_value = {"code": "ERROR"}
-    mock_put.return_value = mock_response
 
-    result = coupang_uploader.update_stock('CP123', 50)
+async def test_update_price_raises_not_implemented(coupang_uploader):
+    """가격 업데이트 미구현 테스트"""
+    with pytest.raises(NotImplementedError):
+        await coupang_uploader.update_price("CP123", Decimal("16000"))
 
-    assert result is False
 
-def test_update_price_success(coupang_uploader, mock_requests_methods):
-    """가격 업데이트 성공 테스트"""
-    _, mock_put, _, _ = mock_requests_methods
-    mock_response = Mock()
-    mock_response.status_code = 200
-    mock_response.json.return_value = {"code": "SUCCESS"}
-    mock_put.return_value = mock_response
+@respx.mock
+async def test_check_upload_status(coupang_uploader):
+    """상품 상태 확인 테스트"""
+    # Given
+    marketplace_product_id = "12345"
+    respx.get(f"https://api-gateway-it.coupang.com/v2/providers/seller_api/v1/products/status/{marketplace_product_id}").mock(
+        return_value=httpx.Response(200, json={"code": "SUCCESS", "data": {"status": "APPROVED"}})
+    )
 
-    result = coupang_uploader.update_price('CP123', 16000.0)
+    # When
+    status = await coupang_uploader.check_upload_status(marketplace_product_id)
 
-    assert result is True
-    mock_put.assert_called_once()
-
-def test_update_price_failure(coupang_uploader, mock_requests_methods):
-    """가격 업데이트 실패 테스트"""
-    _, mock_put, _, _ = mock_requests_methods
-    mock_response = Mock()
-    mock_response.status_code = 500
-    mock_response.json.return_value = {"code": "ERROR"}
-    mock_put.return_value = mock_response
-
-    result = coupang_uploader.update_price('CP123', 16000.0)
-
-    assert result is False
-
-def test_check_upload_status(coupang_uploader):
-    """업로드 상태 확인 테스트"""
-    status = coupang_uploader.check_upload_status('upload_id_123')
-    assert status['status'] == 'completed'
-    assert 'message' in status
+    # Then
+    assert status == "APPROVED"

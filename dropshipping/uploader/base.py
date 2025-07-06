@@ -2,11 +2,18 @@ import abc
 from enum import Enum
 from typing import Dict, Any
 
+from pydantic_settings import BaseSettings
+
 from dropshipping.models.product import StandardProduct
+from dropshipping.storage.base import BaseStorage
+from dropshipping.config import settings, Settings
 
 class MarketplaceType(str, Enum):
-    API = "api"
-    EXCEL = "excel"
+    COUPANG = "coupang"
+    ELEVENST = "elevenst"
+    SMARTSTORE = "smartstore"
+    GMARKET = "gmarket"
+    AUCTION = "auction"
 
 class UploadStatus(str, Enum):
     PENDING = "pending"
@@ -21,9 +28,10 @@ class BaseUploader(abc.ABC):
     상품 업로드, 재고 업데이트, 가격 업데이트 등의 공통 인터페이스를 정의합니다.
     """
 
-    def __init__(self, marketplace_id: str, account_id: str):
-        self.marketplace_id = marketplace_id
-        self.account_id = account_id
+    def __init__(self, marketplace_type: MarketplaceType, storage: BaseStorage, config: BaseSettings):
+        self.marketplace_type = marketplace_type
+        self.storage = storage
+        self.config = config
 
     @abc.abstractmethod
     def upload_product(self, product: StandardProduct) -> Dict[str, Any]:

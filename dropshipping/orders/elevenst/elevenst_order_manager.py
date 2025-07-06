@@ -389,20 +389,20 @@ class ElevenstOrderManager(BaseOrderManager):
 
     async def _return_order(self, marketplace_order_id: str) -> bool:
         """주문 반품"""
-        # 반품 로직은 11번가 정책에 따라 구현 필요
-        logger.warning(f"주문 반품 기능은 아직 구현되지 않았습니다: {marketplace_order_id}")
-        return False
-        url = f"{self.base_url}/openapi/v1/orders/{marketplace_order_id}/return"
-        headers = {"openapikey": self.api_key, "Content-Type": "application/xml"}
-
+        path = f"/openapi/v1/orders/{marketplace_order_id}/return"
         xml_data = """<?xml version="1.0" encoding="UTF-8"?>
         <returnInfo>
             <returnReasonCd>200</returnReasonCd>
             <returnReasonDetail>상품 불량</returnReasonDetail>
         </returnInfo>"""
 
-        response = await self.client.post(url, content=xml_data, headers=headers)
-        return response.status_code == 200
+        try:
+            root = await self._api_request("POST", path, data=xml_data)
+            result = root.find(".//resultCode")
+            return result is not None and result.text == "0"
+        except Exception as e:
+            logger.error(f"주문 반품 실패: {e}")
+            return False
 
     async def close(self):
         """HTTP 클라이언트 종료"""

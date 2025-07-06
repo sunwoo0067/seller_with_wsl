@@ -20,75 +20,46 @@ except ImportError:
 
 from loguru import logger
 
+from dropshipping.config import GmarketUploaderConfig
 from dropshipping.models.product import StandardProduct
+from dropshipping.storage.base import BaseStorage
 from dropshipping.uploader.base import BaseUploader, MarketplaceType, UploadStatus
 
 
 class GmarketExcelUploader(BaseUploader):
     """G마켓/옥션 Excel 업로더"""
 
-    def __init__(self, storage, config: Optional[Dict[str, Any]] = None):
-        """
-        초기화
-
-        Args:
-            storage: 저장소 인스턴스
-            config: Excel 업로더 설정
-                - output_dir: Excel 파일 저장 경로
-                - template_path: 템플릿 파일 경로
-                - marketplace: gmarket 또는 auction
-                - seller_code: 판매자 코드
-        """
-        marketplace = (
-            MarketplaceType.GMARKET
-            if config.get("marketplace") == "gmarket"
-            else MarketplaceType.AUCTION
-        )
-        super().__init__(marketplace, storage, config)
+    def __init__(self, storage: BaseStorage, config: GmarketUploaderConfig, marketplace_type: MarketplaceType):
+        super().__init__(marketplace_type, storage, config)
 
         # 설정
-        self.output_dir = Path(self.config.get("output_dir", "./excel_output"))
+        self.output_dir = Path(self.config.output_dir)
         self.output_dir.mkdir(exist_ok=True)
 
-        self.template_path = self.config.get("template_path")
-        self.seller_code = self.config.get("seller_code", "")
+        self.template_path = self.config.template_path
+        self.seller_code = self.config.seller_code
+        self.category_mapping = self.config.category_mapping
+        self.column_mapping = self.config.column_mapping
 
-        # 카테고리 매핑
-        self.category_mapping = {
-            "전자기기/이어폰": "200001541",  # 이어폰/헤드폰
-            "의류/여성의류": "200000564",  # 여성의류
-            "애완용품": "200002468",  # 반려동물용품
-            # 실제로는 더 많은 매핑 필요
-        }
+    async def upload_product(self, product: StandardProduct) -> Dict[str, Any]:
+        """상품 정보를 엑셀 파일로 생성합니다."""
+        raise NotImplementedError("Gmarket/Auction 엑셀 업로드 기능은 아직 구현되지 않았습니다.")
 
-        # Excel 컬럼 매핑
-        self.column_mapping = {
-            "상품명": "B",
-            "판매가": "C",
-            "재고수량": "D",
-            "카테고리코드": "E",
-            "브랜드": "F",
-            "제조사": "G",
-            "원산지": "H",
-            "상품상태": "I",
-            "배송비유형": "J",
-            "배송비": "K",
-            "반품배송비": "L",
-            "교환배송비": "M",
-            "출고지주소": "N",
-            "반품지주소": "O",
-            "상품이미지1": "P",
-            "상품이미지2": "Q",
-            "상품이미지3": "R",
-            "상품상세설명": "S",
-            "옵션사용여부": "T",
-            "옵션명": "U",
-            "옵션값": "V",
-            "옵션가격": "W",
-            "옵션재고": "X",
-            "판매자상품코드": "Y",
-            "바코드": "Z",
-        }
+    async def upload_products_in_batch(self, products: List[StandardProduct]) -> Dict[str, Any]:
+        """여러 상품 정보를 하나의 엑셀 파일로 생성합니다."""
+        raise NotImplementedError("Gmarket/Auction 일괄 엑셀 업로드 기능은 아직 구현되지 않았습니다.")
+
+    async def update_stock(self, marketplace_product_id: str, stock: int) -> bool:
+        """재고 수정 (엑셀 업로더는 미지원)"""
+        raise NotImplementedError("엑셀 업로더는 재고 수정을 지원하지 않습니다.")
+
+    async def update_price(self, marketplace_product_id: str, price: float) -> bool:
+        """가격 수정 (엑셀 업로더는 미지원)"""
+        raise NotImplementedError("엑셀 업로더는 가격 수정을 지원하지 않습니다.")
+
+    async def check_upload_status(self, marketplace_product_id: str) -> Dict[str, Any]:
+        """업로드 상태 확인 (엑셀 업로더는 미지원)"""
+        raise NotImplementedError("엑셀 업로더는 업로드 상태 확인을 지원하지 않습니다.")
 
     async def validate_product(self, product: StandardProduct) -> Tuple[bool, Optional[str]]:
         """상품 검증"""
@@ -124,7 +95,7 @@ class GmarketExcelUploader(BaseUploader):
         excel_data = {
             "상품명": product.name[:100],
             "판매가": int(product.price),
-            "재고수량": product.stock,
+            "재고수량": sum(v.stock for v in product.variants) if product.variants else 0,
             "카테고리코드": self.category_mapping.get(product.category_name, ""),
             "브랜드": product.brand or "기타",
             "제조사": product.attributes.get("manufacturer", "제조사"),
@@ -134,8 +105,8 @@ class GmarketExcelUploader(BaseUploader):
             "배송비": 2500,
             "반품배송비": 2500,
             "교환배송비": 5000,
-            "출고지주소": self.config.get("shipping_address", "서울특별시 강남구"),
-            "반품지주소": self.config.get("return_address", "서울특별시 강남구"),
+            "출고지주소": self.config.shipping_address,
+            "반품지주소": self.config.return_address,
             "판매자상품코드": product.id,
             "바코드": "",  # 기본 상품에는 바코드 없음
         }
@@ -180,7 +151,7 @@ class GmarketExcelUploader(BaseUploader):
 
     def _create_detail_html(self, product: StandardProduct) -> str:
         """상세 설명 HTML 생성"""
-        marketplace_name = "G마켓" if self.marketplace == MarketplaceType.GMARKET else "옥션"
+        marketplace_name = "G마켓" if self.marketplace_type == MarketplaceType.GMARKET else "옥션"
 
         html = f"""
         <div style="width: 860px; margin: 0 auto; font-family: 'Malgun Gothic', sans-serif;">
@@ -283,7 +254,7 @@ class GmarketExcelUploader(BaseUploader):
             result = {
                 "product_id": product.id,
                 "status": UploadStatus.PENDING,
-                "marketplace": self.marketplace.value,
+                "marketplace": self.marketplace_type.value,
                 "errors": [],
             }
 
@@ -343,7 +314,7 @@ class GmarketExcelUploader(BaseUploader):
 
         # 파일명 생성
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        marketplace_name = "gmarket" if self.marketplace == MarketplaceType.GMARKET else "auction"
+        marketplace_name = "gmarket" if self.marketplace_type == MarketplaceType.GMARKET else "auction"
         filename = f"{marketplace_name}_upload_{timestamp}.xlsx"
         filepath = self.output_dir / filename
 

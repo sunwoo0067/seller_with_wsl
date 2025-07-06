@@ -70,14 +70,33 @@ class TestDomemeClient:
             </products>
         </response>"""
 
-    @patch("requests.Session.post")
-    def test_search_products(self, mock_post, client, mock_response_xml):
+    @patch("requests.get")
+    def test_search_products(self, mock_get, client, mock_response_xml):
         """상품 검색 테스트"""
         # Mock 응답 설정
         mock_response = Mock()
         mock_response.status_code = 200
-        mock_response.content = mock_response_xml.encode("utf-8")
-        mock_post.return_value = mock_response
+        mock_response.json.return_value = {
+            "resultCode": "00",
+            "totalCount": 2,
+            "product": [
+                {
+                    "productNo": "12345",
+                    "productNm": "테스트 상품 1",
+                    "categoryCode": "001",
+                    "supplyPrice": 10000.0,
+                    "salePrice": 15000.0
+                },
+                {
+                    "productNo": "67890",
+                    "productNm": "테스트 상품 2",
+                    "categoryCode": "001",
+                    "supplyPrice": 20000.0,
+                    "salePrice": 25000.0
+                }
+            ]
+        }
+        mock_get.return_value = mock_response
 
         # 검색 실행
         result = client.search_products(category_code="001", start_row=1, end_row=100)
@@ -97,7 +116,7 @@ class TestDomemeClient:
         assert "apiKey" in call_args[1]["data"]
         assert call_args[1]["data"]["categoryCode"] == "001"
 
-    @patch("requests.Session.post")
+    @patch("requests.get")
     def test_api_error_handling(self, mock_post, client):
         """API 오류 처리 테스트"""
         # 오류 응답 설정
@@ -110,7 +129,7 @@ class TestDomemeClient:
         mock_response = Mock()
         mock_response.status_code = 200
         mock_response.content = error_xml.encode("utf-8")
-        mock_post.return_value = mock_response
+        mock_get.return_value = mock_response
 
         # RetryError가 발생하고 내부에 DomemeAPIError가 포함됨
         from tenacity import RetryError
@@ -123,7 +142,7 @@ class TestDomemeClient:
         assert "401" in str(exc_info.value.last_attempt.exception())
         assert "인증 실패" in str(exc_info.value.last_attempt.exception())
 
-    @patch("requests.Session.post")
+    @patch("requests.get")
     def test_network_error_handling(self, mock_post, client):
         """네트워크 오류 처리 테스트"""
         # 네트워크 오류 설정
@@ -175,7 +194,12 @@ class TestDomemeFetcher:
             mock_client = Mock()
             mock_client_class.return_value = mock_client
 
-            fetcher = DomemeFetcher(storage=storage, api_key="test-api-key")
+            fetcher = DomemeFetcher(
+                storage=storage,
+                supplier_name="domeme",
+                api_key="test-api-key",
+                api_url="https://test.api.com"
+            )
             fetcher.client = mock_client
             return fetcher
 

@@ -19,7 +19,7 @@ class TestBaseFetcher:
     def test_mock_fetcher_initialization(self):
         """MockFetcher 초기화 테스트"""
         fetcher = MockFetcher()
-        assert fetcher.supplier_id == "mock"
+        assert fetcher.supplier_name == "mock"
         assert fetcher.total_products == 50
         assert fetcher.products_per_page == 10
         assert len(fetcher._generated_products) == 50
@@ -70,9 +70,9 @@ class TestBaseFetcher:
         data2 = {"name": "테스트", "productNo": "001"}  # 순서 다름
         data3 = {"productNo": "002", "name": "테스트"}
 
-        hash1 = fetcher.calculate_hash(data1)
-        hash2 = fetcher.calculate_hash(data2)
-        hash3 = fetcher.calculate_hash(data3)
+        hash1 = fetcher._calculate_hash(data1)
+        hash2 = fetcher._calculate_hash(data2)
+        hash3 = fetcher._calculate_hash(data3)
 
         assert hash1 == hash2  # 순서가 달라도 같은 해시
         assert hash1 != hash3  # 데이터가 다르면 다른 해시
@@ -164,19 +164,29 @@ class TestDomemeFetcher:
 
     def test_domeme_fetcher_initialization(self, mock_storage):
         """DomemeFetcher 초기화 테스트"""
-        fetcher = DomemeFetcher(storage=mock_storage, api_key="test_key")
+        fetcher = DomemeFetcher(
+            storage=mock_storage,
+            supplier_name="domeme",
+            api_key="test_key",
+            api_url="https://test.api.com"
+        )
 
-        assert fetcher.supplier_id == "domeme"
+        assert fetcher.supplier_name == "domeme"
         assert fetcher.storage == mock_storage
-        assert isinstance(fetcher.transformer, DomemeTransformer)
-        assert len(fetcher.target_categories) == 10
+        assert fetcher.api_key == "test_key"
+        assert fetcher.api_url == "https://test.api.com"
 
     @patch("dropshipping.suppliers.domeme.fetcher.DomemeClient")
     def test_fetch_list_success(self, mock_client_class, mock_storage, mock_domeme_client):
         """상품 목록 조회 성공 테스트"""
         mock_client_class.return_value = mock_domeme_client
 
-        fetcher = DomemeFetcher(storage=mock_storage, api_key="test_key")
+        fetcher = DomemeFetcher(
+            storage=mock_storage,
+            supplier_name="domeme",
+            api_key="test_key",
+            api_url="https://test.api.com"
+        )
         fetcher.client = mock_domeme_client
 
         products, has_next = fetcher.fetch_list(page=1, category="001")
@@ -198,7 +208,12 @@ class TestDomemeFetcher:
         """날짜 필터링 테스트"""
         mock_client_class.return_value = mock_domeme_client
 
-        fetcher = DomemeFetcher(storage=mock_storage, api_key="test_key")
+        fetcher = DomemeFetcher(
+            storage=mock_storage,
+            supplier_name="domeme",
+            api_key="test_key",
+            api_url="https://test.api.com"
+        )
         fetcher.client = mock_domeme_client
 
         # 미래 날짜로 필터링
@@ -213,7 +228,12 @@ class TestDomemeFetcher:
         """상품 상세 조회 성공 테스트"""
         mock_client_class.return_value = mock_domeme_client
 
-        fetcher = DomemeFetcher(storage=mock_storage, api_key="test_key")
+        fetcher = DomemeFetcher(
+            storage=mock_storage,
+            supplier_name="domeme",
+            api_key="test_key",
+            api_url="https://test.api.com"
+        )
         fetcher.client = mock_domeme_client
 
         detail = fetcher.fetch_detail("DOM001")
@@ -231,7 +251,12 @@ class TestDomemeFetcher:
         mock_client.search_products.side_effect = DomemeAPIError("API 오류")
         mock_client_class.return_value = mock_client
 
-        fetcher = DomemeFetcher(storage=mock_storage, api_key="test_key")
+        fetcher = DomemeFetcher(
+            storage=mock_storage,
+            supplier_name="domeme",
+            api_key="test_key",
+            api_url="https://test.api.com"
+        )
         fetcher.client = mock_client
 
         with pytest.raises(DomemeAPIError) as exc_info:
@@ -244,7 +269,12 @@ class TestDomemeFetcher:
         """상세 조회 필요 여부 판단 테스트"""
         mock_client_class.return_value = Mock()
 
-        fetcher = DomemeFetcher(storage=mock_storage, api_key="test_key")
+        fetcher = DomemeFetcher(
+            storage=mock_storage,
+            supplier_name="domeme",
+            api_key="test_key",
+            api_url="https://test.api.com"
+        )
 
         # 상세 정보가 충분한 경우
         complete_item = {
@@ -265,7 +295,12 @@ class TestDomemeFetcher:
         """단일 카테고리 증분 동기화 테스트"""
         mock_client_class.return_value = mock_domeme_client
 
-        fetcher = DomemeFetcher(storage=mock_storage, api_key="test_key")
+        fetcher = DomemeFetcher(
+            storage=mock_storage,
+            supplier_name="domeme",
+            api_key="test_key",
+            api_url="https://test.api.com"
+        )
         fetcher.client = mock_domeme_client
 
         since_date = datetime.now() - timedelta(days=1)

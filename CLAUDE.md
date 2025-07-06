@@ -1,14 +1,5 @@
 # CLAUDE.md
 
-
-## Claude MCP 연동 지침
-
-- Claude CLI는 MCP 서버로 로컬에서 실행되며, 기본 포트는 `8181`입니다.
-- MCP 설정은 `claude_code_config.json`에 명시되어 있으며, `defaultTool`은 `claude`입니다.
-- Gemini CLI로 생성된 코드에 대해서는 Claude가 자동 리뷰를 수행합니다 (`autoReview: true`).
-- MCP 도구 ID는 `claude`, 내부 실행 명령은 `node ./tools/claude-mcp-server.mjs`입니다.
-- Claude는 기본 응답자이며, 모든 자연어 프롬프트 요청은 Claude MCP로 전달됩니다.
-
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 한국어로 대답해줘.
@@ -180,6 +171,24 @@ dropshipping/
 5. `tests/uploader/test_new_marketplace.py`에 테스트 추가
 6. `uploader/registry.py`에 `@UploaderRegistry.register()` 데코레이터로 등록
 
+### 단일 테스트 실행
+```bash
+# 특정 테스트 파일 실행
+pytest tests/suppliers/test_domeme.py
+
+# 특정 테스트 함수만 실행
+pytest tests/suppliers/test_domeme.py::test_fetch_products
+
+# 특정 클래스의 테스트만 실행
+pytest tests/suppliers/test_domeme.py::TestDomemeFetcher
+
+# 실패한 테스트만 재실행
+pytest --lf
+
+# 특정 마커가 있는 테스트만 실행
+pytest -m "not slow"
+```
+
 ### 디버깅 팁
 - `logs/` 디렉토리의 로그 확인 (loguru 순환 파일)
 - 원본 API 응답은 `products_raw.raw_json` 컬럼에 저장됨
@@ -254,8 +263,45 @@ RETRY_DELAY=1                      # 재시도 대기(초)
 - **비동기 오류**: 독립 스크립트에서 `asyncio.run()` 사용
 - **레지스트리 오류**: 데코레이터 사용법 확인 (`@SupplierRegistry.register()`)
 
+## 배포 및 운영
+
+### Docker 실행
+```bash
+# 전체 시스템 실행
+docker-compose up -d
+
+# 특정 서비스만 실행
+docker-compose up -d api
+docker-compose up -d scheduler
+
+# 로그 확인
+docker-compose logs -f api
+```
+
+### Systemd 서비스 (프로덕션)
+```bash
+# 서비스 설치
+sudo ./systemd/install.sh
+
+# 서비스 관리
+sudo systemctl start dropshipping-api
+sudo systemctl start dropshipping-scheduler
+sudo systemctl start dropshipping-monitoring
+
+# 상태 확인
+sudo systemctl status dropshipping-*
+```
+
 ## 개발 도구
 - **Poetry 지원**: `pyproject.toml` 파일 (pip와 병행 사용 가능)
 - **Pre-commit 훅**: 코드 품질 자동 검사
 - **Python 버전**: 3.11+ 필수 (3.12 권장)
 - **IDE 설정**: VS Code 설정 파일 포함 (.vscode/)
+- **가상환경 활성화**: `source activate.sh` 또는 `source venv/bin/activate`
+
+## 성능 최적화 팁
+- **배치 처리**: `BATCH_SIZE` 환경변수로 조절 (기본값: 100)
+- **동시성**: `MAX_CONCURRENT_REQUESTS`로 동시 요청 수 제한 (기본값: 10)
+- **재시도**: `RETRY_ATTEMPTS`와 `RETRY_DELAY`로 재시도 정책 설정
+- **비동기 처리**: httpx/asyncio 기반으로 모든 I/O 작업 비동기화
+- **메모리 효율**: 대용량 데이터는 제너레이터/스트리밍 사용

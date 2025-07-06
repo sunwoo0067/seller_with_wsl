@@ -11,43 +11,53 @@ from typing import Any, Dict, List, Optional, Tuple
 import httpx
 from loguru import logger
 
+from dropshipping.config import ElevenstConfig
 from dropshipping.models.product import StandardProduct
+from dropshipping.storage.base import BaseStorage
 from dropshipping.uploader.base import BaseUploader, MarketplaceType
 
 
 class ElevenstUploader(BaseUploader):
     """11번가 업로더"""
 
-    def __init__(self, storage, config: Optional[Dict[str, Any]] = None):
-        """
-        초기화
-
-        Args:
-            storage: 저장소 인스턴스
-            config: 11번가 API 설정
-                - api_key: OpenAPI Key
-                - seller_id: 판매자 회원번호
-                - test_mode: 테스트 모드 여부
-        """
+    def __init__(self, storage: BaseStorage, config: ElevenstConfig):
         super().__init__(MarketplaceType.ELEVENST, storage, config)
 
         # API 설정
-        self.seller_id = self.config.get("seller_id")
-        self.test_mode = self.config.get("test_mode", False)
-
-        # API 엔드포인트
-        self.base_url = "https://api.11st.co.kr/rest"
-
-        # 11번가 카테고리 매핑
-        self.category_mapping = {
-            "전자기기/이어폰": "159966",  # 이어폰/헤드폰
-            "의류/여성의류": "103755",  # 여성의류
-            "애완용품": "201775",  # 반려동물용품
-            # 실제로는 더 많은 매핑 필요
-        }
+        self.seller_id = self.config.seller_id
+        self.test_mode = self.config.test_mode
+        self.base_url = self.config.base_url
+        self.category_mapping = self.config.category_mapping
 
         # HTTP 클라이언트
-        self.client = httpx.AsyncClient(timeout=30.0)
+        self.client = httpx.AsyncClient(
+            base_url=self.base_url,
+            headers={"openapikey": self.config.api_key},
+            timeout=30.0,
+        )
+
+    async def upload_product(self, product: StandardProduct) -> Dict[str, Any]:
+        """상품을 마켓플레이스에 업로드합니다."""
+        is_valid, error_message = await self.validate_product(product)
+        if not is_valid:
+            logger.error(f"상품 검증 실패: {error_message}")
+            return {"success": False, "error": f"상품 검증 실패: {error_message}"}
+
+        product_data = await self.transform_product(product)
+        result = await self.upload_single(product_data)
+        return result
+
+    async def update_stock(self, marketplace_product_id: str, stock: int) -> bool:
+        """재고 수정 (미구현)"""
+        raise NotImplementedError("11번가 재고 수정 기능은 아직 구현되지 않았습니다.")
+
+    async def update_price(self, marketplace_product_id: str, price: float) -> bool:
+        """가격 수정 (미구현)"""
+        raise NotImplementedError("11번가 가격 수정 기능은 아직 구현되지 않았습니다.")
+
+    async def check_upload_status(self, marketplace_product_id: str) -> Dict[str, Any]:
+        """상품 업로드 상태 확인 (미구현)"""
+        raise NotImplementedError("11번가 상품 상태 확인 기능은 아직 구현되지 않았습니다.")
 
     async def validate_product(self, product: StandardProduct) -> Tuple[bool, Optional[str]]:
         """상품 검증"""
@@ -94,12 +104,12 @@ class ElevenstUploader(BaseUploader):
                 "stkQty": str(product.stock),
                 "dlvCstInstBasiCd": "02",  # 배송비 결제: 선결제
                 "dlvCstPayTypCd": "03",  # 배송비 유형: 조건부무료
-                "dlvCst1": "2500",  # 배송비
-                "dlvCst2": "30000",  # 무료배송 금액
-                "exchDlvCst": "2500",  # 교환배송비
-                "rtngDlvCst": "2500",  # 반품배송비
+                "dlvCst1": str(self.config.delivery_cost),
+                "dlvCst2": str(self.config.free_shipping_threshold),
+                "exchDlvCst": str(self.config.exchange_delivery_cost),
+                "rtngDlvCst": str(self.config.return_delivery_cost),
                 "dlvClf": "01",  # 배송분류: 국내배송
-                "dlvEtprsCd": "00034",  # 택배사코드: CJ대한통운
+                "dlvEtprsCd": self.config.delivery_company_code,
                 "productPrdImage": [
                     {
                         "prdImage01": str(product.images[0].url) if len(product.images) > 0 else "",
@@ -117,7 +127,6 @@ class ElevenstUploader(BaseUploader):
                 "dispCtgrStatCd": "01",  # 카테고리 상태: 정상
                 "paidSelPrc": str(int(product.price * Decimal("0.9"))),  # 할인가
                 "sellerPrdCd": product.id,  # 판매자 상품코드
-                "barCd": product.barcode or "",
                 "optSelectYn": "Y" if product.variants else "N",  # 옵션 여부
                 "optMixYn": "N",  # 조합형 옵션 여부
                 "tmpltSeq": "0",  # 템플릿 번호

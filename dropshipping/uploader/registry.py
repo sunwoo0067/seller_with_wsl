@@ -42,11 +42,12 @@ class UploaderRegistry:
         """Register an uploader"""
         self._uploaders[name] = uploader_class
 
-    def get_uploader(self, name: str) -> BaseUploader:
+    def get_uploader(self, name: str, storage: 'BaseStorage', config: 'Settings') -> 'BaseUploader':
         """Get uploader instance"""
         if name not in self._uploaders:
             raise ValueError(f"Unknown uploader: {name}")
-        return self._uploaders[name]()
+        uploader_class = self._uploaders[name]
+        return uploader_class(storage=storage, config=config)
 
     def list_uploaders(self) -> List[str]:
         """List registered uploaders"""

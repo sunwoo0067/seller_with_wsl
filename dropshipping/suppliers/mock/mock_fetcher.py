@@ -15,11 +15,18 @@ class MockFetcher(BaseFetcher):
     """테스트용 Mock 데이터 Fetcher"""
 
     def __init__(self, storage=None, transformer=None):
-        super().__init__("mock", storage, transformer)
+        super().__init__(storage, supplier_name="mock")
         self.products_per_page = 10
         self.total_products = 50  # 총 상품 수
         self._generated_products = []  # 생성된 상품 캐시
         self._generate_all_products()
+        # 통계 추가
+        self._stats = {
+            "fetched": 0,
+            "saved": 0,
+            "duplicates": 0,
+            "errors": 0
+        }
 
     def _generate_all_products(self):
         """모든 상품 미리 생성 (일관성 보장)"""
@@ -131,3 +138,8 @@ class MockFetcher(BaseFetcher):
     def set_products_per_page(self, count: int):
         """테스트용: 페이지당 상품 수 설정"""
         self.products_per_page = count
+    
+    @property
+    def stats(self):
+        """통계 반환"""
+        return self._stats.copy()

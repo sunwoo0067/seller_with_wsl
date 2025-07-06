@@ -5,12 +5,12 @@ Mock 모드 상품 수집 기능 테스트
 
 import asyncio
 from datetime import datetime, timedelta
-from dropshipping.suppliers.mock.mock_fetcher import MockSupplierFetcher
+from dropshipping.suppliers.mock.mock_fetcher import MockFetcher
 from tests.fixtures.mock_storage import MockStorage
 from dropshipping.transformers.domeme import DomemeTransformer
 from dropshipping.monitoring import setup_logging, get_logger
 from dropshipping.scheduler.main import MainScheduler
-from dropshipping.scheduler.jobs.collection import DailyCollectionJob
+from dropshipping.scheduler.jobs.collection_job import DailyCollectionJob
 
 # 로깅 설정
 setup_logging(log_level="INFO")

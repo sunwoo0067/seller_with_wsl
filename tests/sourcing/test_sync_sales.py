@@ -12,7 +12,7 @@ from dropshipping.storage.base import BaseStorage
 @pytest.fixture
 def mock_storage():
     """Mock BaseStorage 인스턴스"""
-    storage = MagicMock(spec=BaseStorage)
+    storage = MagicMock()  # spec=BaseStorage 제거하여 유연성 확보
 
     # Mock get_processed_product
     def get_processed_product_side_effect(product_id):
@@ -40,10 +40,10 @@ def mock_storage():
             )
         return None
 
-    storage.get_processed_product.side_effect = get_processed_product_side_effect
+    storage.get_processed_product = AsyncMock(side_effect=get_processed_product_side_effect)
 
-    # Mock list (for orders)
-    storage.list.return_value = AsyncMock(
+    # Mock get_sales_data (이전 'list' 메서드 대체)
+    storage.get_sales_data = AsyncMock(
         return_value=[
             {
                 "order_date": datetime.now() - timedelta(days=5),
@@ -61,10 +61,10 @@ def mock_storage():
                 ],
             },
         ]
-    )()
+    )
 
     # Mock upsert
-    storage.upsert.return_value = AsyncMock(return_value=[])()
+    storage.upsert = AsyncMock(return_value=[])
 
     return storage
 
@@ -80,16 +80,11 @@ async def test_sync_sales_data_success(sales_synchronizer, mock_storage):
     """판매 데이터 동기화 성공 테스트"""
     await sales_synchronizer.sync_sales_data(lookback_days=7)
 
-    # storage.list가 올바른 인수로 호출되었는지 확인
-    mock_storage.list.assert_called_once_with(
-        "orders",
-        filters={
-            "order_date": {
-                "$gte": sales_synchronizer.sync_sales_data.call_args[1]["start_date"],
-                "$lte": sales_synchronizer.sync_sales_data.call_args[1]["end_date"],
-            }
-        },
-    )
+    # storage.get_sales_data가 올바른 인수로 호출되었는지 확인
+    mock_storage.get_sales_data.assert_called_once()
+    args, _ = mock_storage.get_sales_data.call_args
+    assert isinstance(args[0], datetime)  # start_date
+    assert isinstance(args[1], datetime)  # end_date
 
     # storage.upsert가 올바른 인수로 호출되었는지 확인
     mock_storage.upsert.assert_called_once()

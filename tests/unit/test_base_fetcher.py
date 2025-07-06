@@ -8,7 +8,7 @@ from dropshipping.storage.supabase_storage import SupabaseStorage
 class ConcreteFetcher(BaseFetcher):
     """BaseFetcher를 테스트하기 위한 구체적인 구현체"""
     def __init__(self, storage: SupabaseStorage):
-        super().__init__(storage)
+        super().__init__(storage, supplier_name="test_supplier")
         self._list_data = []
         self._detail_data = {}
 
@@ -45,7 +45,7 @@ def concrete_fetcher(mock_supabase_storage):
 def test_base_fetcher_abstract_methods():
     """추상 메서드가 구현되지 않으면 TypeError 발생 확인"""
     with pytest.raises(TypeError):
-        BaseFetcher(Mock())
+        BaseFetcher(Mock(), "test_supplier")
 
 def test_calculate_hash(concrete_fetcher):
     """데이터 해시 계산 테스트"""

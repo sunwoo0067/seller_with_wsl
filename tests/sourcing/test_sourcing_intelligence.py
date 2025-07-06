@@ -65,25 +65,31 @@ class MockStorage(BaseStorage):
         items = sorted(list(self.data[table].values()), key=lambda x: x.get('id', ''))
 
         if filters:
-            filtered_items = items
-            for key, value in filters.items():
-                if key.endswith("_gte"):
-                    field = key[:-4]
-                    filtered_items = [
-                        item
-                        for item in filtered_items
-                        if item.get(field, datetime.min) >= value
-                    ]
-                elif key.endswith("_lte"):
-                    field = key[:-4]
-                    filtered_items = [
-                        item
-                        for item in filtered_items
-                        if item.get(field, datetime.max) <= value
-                    ]
-                else:
-                    filtered_items = [item for item in filtered_items if item.get(key) == value]
-            items = filtered_items
+            active_filters = {k: v for k, v in filters.items() if v is not None}
+            if active_filters:
+                truly_filtered_items = []
+                for item in items:
+                    match = True
+                    for key, value in active_filters.items():
+                        if key.endswith("_gte"):
+                            field = key[:-4]
+                            item_value = item.get(field)
+                            if not (item_value and item_value >= value):
+                                match = False
+                                break
+                        elif key.endswith("_lte"):
+                            field = key[:-4]
+                            item_value = item.get(field)
+                            if not (item_value and item_value <= value):
+                                match = False
+                                break
+                        else:
+                            if item.get(key) != value:
+                                match = False
+                                break
+                    if match:
+                        truly_filtered_items.append(item)
+                items = truly_filtered_items
 
         if offset > 0:
             items = items[offset:]
@@ -167,11 +173,16 @@ class MockStorage(BaseStorage):
             return True
         return False
 
-    async def get_sales_data(self, start_date: datetime, end_date: datetime) -> List[Dict[str, Any]]:
-        return await self._list(
-            "sales",
-            filters={"sale_date_gte": start_date, "sale_date_lte": end_date},
-        )
+    async def get_sales_data(
+        self,
+        start_date: datetime,
+        end_date: datetime,
+        product_id: Optional[str] = None,
+    ) -> List[Dict[str, Any]]:
+        filters = {"sale_date_gte": start_date, "sale_date_lte": end_date}
+        if product_id:
+            filters["product_id"] = product_id
+        return await self._list("sales", filters=filters)
 
     async def get_keyword_data(self, keyword: str) -> List[Dict[str, Any]]:
         return await self._list("keywords", filters={"keyword": keyword})
@@ -336,8 +347,9 @@ async def setup_test_data(storage: MockStorage):
         {"id": "c2", "product_id": "1", "name": "또다른 거치대", "price": 16000, "reviews": 150, "rating": 4.4},
     ]
     await storage.upsert("competitors", competitors_data, on_conflict="id")
-
+    
     return storage
+
 
 
 class TestSalesAnalyzer:
