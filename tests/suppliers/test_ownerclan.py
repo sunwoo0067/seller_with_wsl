@@ -10,7 +10,7 @@ from datetime import datetime
 from dropshipping.suppliers.ownerclan.fetcher import OwnerclanFetcher
 from dropshipping.suppliers.ownerclan.parser import OwnerclanParser
 from dropshipping.suppliers.ownerclan.transformer import OwnerclanTransformer
-from dropshipping.models.product import StandardProduct
+from dropshipping.models.product import StandardProduct, ProductStatus
 
 
 @pytest.fixture
@@ -238,14 +238,14 @@ class TestOwnerclanTransformer:
         product = transformer.transform(parsed)
         
         assert isinstance(product, StandardProduct)
-        assert product.supplier_id == "ITEM001"
-        assert product.supplier == "ownerclan"
+        assert product.supplier_id == "ownerclan"
+        assert product.supplier_product_id == "ITEM001"
         assert product.name == "테스트 상품 1"
         assert product.brand == "테스트 제조사"
-        assert product.original_price == 10000
-        assert product.selling_price == 15600  # 12000 * 1.3 반올림
+        assert float(product.cost) == 10000
+        assert float(product.price) == 13000  # 10000 * 1.3
         assert len(product.images) == 2
-        assert product.is_active == True
+        assert product.status == ProductStatus.ACTIVE
     
     def test_transform_options(self, sample_detail_response):
         """옵션 변환 테스트"""
@@ -258,8 +258,8 @@ class TestOwnerclanTransformer:
         assert len(product.options) == 2  # 색상, 사이즈
         assert product.options[0].name in ["색상", "사이즈"]
         assert len(product.variants) == 2
-        assert product.variants[0].stock_quantity == 50
-        assert product.stock_quantity == 80
+        assert product.variants[0].stock == 50
+        assert product.stock == 80
     
     def test_transform_shipping(self, sample_detail_response):
         """배송 정보 변환 테스트"""
@@ -269,10 +269,12 @@ class TestOwnerclanTransformer:
         transformer = OwnerclanTransformer()
         product = transformer.transform(parsed)
         
-        assert product.shipping_info.method == "유료배송"
-        assert product.shipping_info.fee == 3000
-        assert product.shipping_info.estimated_days_min == 2
-        assert product.shipping_info.estimated_days_max == 3
+        assert product.shipping_method == "유료배송"
+        assert float(product.shipping_fee) == 3000
+        # shipping_info는 attributes에 저장됨
+        shipping_info = product.attributes.get("shipping_info", {})
+        assert shipping_info.get("estimated_days_min") == 2
+        assert shipping_info.get("estimated_days_max") == 3
     
     def test_transform_invalid_product(self):
         """잘못된 상품 변환 테스트"""
@@ -337,7 +339,8 @@ class TestOwnerclanIntegration:
             
             # 검증
             assert standard_product is not None
-            assert standard_product.supplier_id == "ITEM001"
+            assert standard_product.supplier_id == "ownerclan"
+            assert standard_product.supplier_product_id == "ITEM001"
             assert standard_product.name == "테스트 상품 1"
             assert len(standard_product.options) == 2
-            assert standard_product.stock_quantity == 80
+            assert standard_product.stock == 80

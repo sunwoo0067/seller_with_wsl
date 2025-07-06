@@ -262,13 +262,15 @@ class BaseOrderManager(ABC):
                 latest_order = await self.transform_order(raw_order)
 
                 updates = {}
-                if latest_order.status != order_data["status"]:
+                # order_data["status"]는 이미 문자열이므로 .value 비교
+                if latest_order.status.value != order_data["status"]:
                     updates["status"] = latest_order.status.value
 
-                if latest_order.delivery.status != order_data["delivery"]["status"]:
+                # delivery status도 마찬가지로 문자열 비교
+                if latest_order.delivery and latest_order.delivery.status.value != order_data["delivery"]["status"]:
                     updates["delivery.status"] = latest_order.delivery.status.value
 
-                if latest_order.delivery.tracking_number != order_data["delivery"].get(
+                if latest_order.delivery and latest_order.delivery.tracking_number != order_data["delivery"].get(
                     "tracking_number"
                 ):
                     updates["delivery.tracking_number"] = latest_order.delivery.tracking_number
@@ -281,7 +283,7 @@ class BaseOrderManager(ABC):
                     logger.info(f"주문 상태 업데이트: {order_data['id']} - {updates}")
 
             except Exception as e:
-                logger.error(f"주문 상태 동기화 오류 ({order_data['id']}): {str(e)}")
+                logger.error(f"주문 상태 동기화 오류 ({order_data['id']}): {e}", exc_info=True)
 
         return updated_count
 

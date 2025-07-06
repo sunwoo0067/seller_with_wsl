@@ -5,6 +5,7 @@
 import asyncio
 from datetime import datetime, timedelta
 from decimal import Decimal
+from typing import Optional
 
 from dropshipping.sourcing.competitor_monitor import CompetitorMonitor
 from dropshipping.sourcing.keyword_researcher import KeywordResearcher
@@ -142,6 +143,43 @@ class MockStorage(BaseStorage):
 
     async def save(self, table: str, data: dict) -> dict:
         """save 메서드 (create의 별칭)"""
+        return await self.create(table, data)
+    
+    # 추가 필수 메서드들
+    async def get_all_category_mappings(self):
+        """카테고리 매핑 조회"""
+        return await self.list("category_mappings")
+    
+    async def get_marketplace_code(self, marketplace: str) -> Optional[str]:
+        """마켓플레이스 코드 조회"""
+        return marketplace.upper()
+    
+    async def get_marketplace_upload(self, product_id: str, marketplace: str) -> Optional[dict]:
+        """마켓플레이스 업로드 정보 조회"""
+        uploads = await self.list("marketplace_uploads", 
+                                filters={"product_id": product_id, "marketplace": marketplace})
+        return uploads[0] if uploads else None
+    
+    async def get_pricing_rules(self, supplier: str) -> list:
+        """가격 규칙 조회"""
+        return await self.list("pricing_rules", filters={"supplier": supplier})
+    
+    async def get_supplier_code(self, supplier: str) -> Optional[str]:
+        """공급사 코드 조회"""
+        return supplier.upper()
+    
+    async def save_marketplace_upload(self, upload_data: dict) -> dict:
+        """마켓플레이스 업로드 정보 저장"""
+        return await self.create("marketplace_uploads", upload_data)
+    
+    async def upsert(self, table: str, data: dict, unique_fields: list = None) -> dict:
+        """업서트 (생성 또는 업데이트)"""
+        if unique_fields:
+            # unique_fields로 기존 데이터 찾기
+            filters = {field: data.get(field) for field in unique_fields}
+            existing = await self.list(table, filters=filters, limit=1)
+            if existing:
+                return await self.update(table, existing[0]["id"], data)
         return await self.create(table, data)
 
 

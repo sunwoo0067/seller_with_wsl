@@ -285,23 +285,47 @@ class BaseScheduler:
         if not job:
             return None
 
+        # APScheduler 3.x에서는 next_run_time이 직접 접근 가능하지 않음
+        # get_next_fire_time() 메서드를 사용해야 함
+        next_run = None
+        try:
+            # 다음 실행 시간 가져오기
+            if hasattr(job, 'next_run_time') and job.next_run_time:
+                next_run = job.next_run_time.isoformat()
+            elif hasattr(job.trigger, 'get_next_fire_time'):
+                next_fire_time = job.trigger.get_next_fire_time(None, datetime.now())
+                if next_fire_time:
+                    next_run = next_fire_time.isoformat()
+        except Exception:
+            pass
+        
         return {
             "id": job.id,
             "name": job.name,
-            "next_run_time": job.next_run_time.isoformat() if job.next_run_time else None,
+            "next_run_time": next_run,
             "trigger": str(job.trigger),
-            "pending": job.pending,
-            "coalesce": job.coalesce,
-            "max_instances": job.max_instances,
+            "pending": getattr(job, 'pending', None),
+            "coalesce": getattr(job, 'coalesce', None),
+            "max_instances": getattr(job, 'max_instances', 1),
         }
 
     def get_schedule_summary(self) -> Dict[str, Any]:
         """스케줄 요약 정보"""
         jobs = self.get_jobs()
+        
+        # pending 속성이 없는 경우를 처리
+        active_jobs = 0
+        paused_jobs = 0
+        for j in jobs:
+            if hasattr(j, 'pending') and j.pending:
+                paused_jobs += 1
+            else:
+                active_jobs += 1
+        
         return {
             "is_running": self.is_running,
             "total_jobs": len(jobs),
-            "active_jobs": len([j for j in jobs if not j.pending]),
-            "paused_jobs": len([j for j in jobs if j.pending]),
+            "active_jobs": active_jobs,
+            "paused_jobs": paused_jobs,
             "jobs": [self.get_job_info(j.id) for j in jobs],
         }

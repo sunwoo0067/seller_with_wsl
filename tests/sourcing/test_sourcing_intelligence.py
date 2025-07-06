@@ -323,19 +323,28 @@ async def setup_test_data(storage: MockStorage):
     for product in products:
         await storage.save_processed_product(raw_id=f"raw_{product.id}", product=product)
 
-    sales_data = []
+    # 주문 데이터 생성 (SalesAnalyzer가 orders 테이블을 사용함)
+    orders_data = []
     for i in range(30):
         product = products[i % len(products)]
-        sales_data.append({
-            "id": f"s{i}",
-            "product_id": product.id,
-            "quantity": (i % 5) + 1,
-            "sale_date": datetime.now() - timedelta(days=i),
-            "category": product.category_code,
-            "price": product.price,
-            "total_price": product.price * ((i % 5) + 1)
+        order_date = datetime.now() - timedelta(days=i)
+        orders_data.append({
+            "id": f"order{i}",
+            "marketplace": "test_market", 
+            "marketplace_order_id": f"M{i}",
+            "order_date": order_date,
+            "status": "delivered" if i % 2 == 0 else "shipped",
+            "items": [{
+                "product_id": product.id,
+                "quantity": (i % 5) + 1,
+                "unit_price": product.price,
+                "total_price": product.price * ((i % 5) + 1)
+            }],
+            "customer": {"name": f"Customer{i}"},
+            "payment": {"total_amount": product.price * ((i % 5) + 1)},
+            "delivery": {"status": "delivered" if i % 2 == 0 else "in_transit"}
         })
-    await storage.upsert("sales", sales_data, on_conflict="id")
+    await storage.upsert("orders", orders_data, on_conflict="id")
 
     trends_data = [
         {"id": "t1", "topic": "홈트레이닝", "monthly_searches": 50000, "trend_date": datetime.now() - timedelta(days=5)},

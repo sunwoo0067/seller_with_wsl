@@ -5,7 +5,7 @@
 import asyncio
 from datetime import datetime, timedelta
 from decimal import Decimal
-from unittest.mock import Mock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 
@@ -491,8 +491,8 @@ class TestOrderProcessing:
         }
         return CoupangOrderManager(storage, config)
 
-    @patch("httpx.AsyncClient.get")
-    def test_process_new_orders(self, mock_get, coupang_manager, storage):
+    @patch("httpx.AsyncClient.request")
+    def test_process_new_orders(self, mock_request, coupang_manager, storage):
         """신규 주문 처리 테스트"""
         # Mock 응답
         mock_response = Mock()
@@ -525,7 +525,7 @@ class TestOrderProcessing:
                 }
             ],
         }
-        mock_get.return_value = mock_response
+        mock_request.return_value = mock_response
 
         # 실행
         orders = asyncio.run(coupang_manager.process_new_orders())
@@ -552,7 +552,7 @@ class TestOrderProcessing:
         asyncio.run(storage.create("orders", order_data))
 
         # Mock 상세 조회
-        with patch.object(coupang_manager, "fetch_order_detail") as mock_detail:
+        with patch.object(coupang_manager, "fetch_order_detail", new_callable=AsyncMock) as mock_detail:
             mock_detail.return_value = {
                 "orderId": "123456",
                 "orderedAt": "2024-01-01T10:00:00Z",

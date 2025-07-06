@@ -319,12 +319,17 @@ class TestScheduler:
         assert JobStatus.COMPLETED in statuses
         assert JobStatus.CANCELLED in statuses
 
-    def test_scheduler_start_stop(self, scheduler):
+    @pytest.mark.asyncio
+    async def test_scheduler_start_stop(self, scheduler):
         """스케줄러 시작/종료 테스트"""
         assert scheduler.is_running == False
 
+        # AsyncIOScheduler는 이벤트 루프 내에서 실행되어야 함
         scheduler.start()
         assert scheduler.is_running == True
+
+        # 잠시 대기하여 스케줄러가 완전히 시작되도록 함
+        await asyncio.sleep(0.1)
 
         scheduler.shutdown(wait=False)
         assert scheduler.is_running == False

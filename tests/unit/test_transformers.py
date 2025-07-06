@@ -140,7 +140,7 @@ class TestDomemeTransformer:
         raw_data["productStatus"] = "Y"
         raw_data["stockQty"] = "0"
         product = transformer.to_standard(raw_data)
-        assert product.status == ProductStatus.SOLDOUT
+        assert product.status == ProductStatus.OUT_OF_STOCK
 
     def test_batch_transform(self, transformer):
         """배치 변환 테스트"""

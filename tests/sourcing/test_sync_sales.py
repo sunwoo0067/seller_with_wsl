@@ -40,10 +40,10 @@ def mock_storage():
             )
         return None
 
-    storage.get_processed_product = AsyncMock(side_effect=get_processed_product_side_effect)
+    storage.get_processed_product = MagicMock(side_effect=get_processed_product_side_effect)
 
-    # Mock get_sales_data (이전 'list' 메서드 대체)
-    storage.get_sales_data = AsyncMock(
+    # Mock list 메서드 (sync_sales_data에서 사용)
+    storage.list = AsyncMock(
         return_value=[
             {
                 "order_date": datetime.now() - timedelta(days=5),
@@ -62,6 +62,9 @@ def mock_storage():
             },
         ]
     )
+    
+    # Mock get_sales_data도 유지 (다른 테스트에서 사용할 수 있음)
+    storage.get_sales_data = storage.list
 
     # Mock upsert
     storage.upsert = AsyncMock(return_value=[])
@@ -80,11 +83,11 @@ async def test_sync_sales_data_success(sales_synchronizer, mock_storage):
     """판매 데이터 동기화 성공 테스트"""
     await sales_synchronizer.sync_sales_data(lookback_days=7)
 
-    # storage.get_sales_data가 올바른 인수로 호출되었는지 확인
-    mock_storage.get_sales_data.assert_called_once()
-    args, _ = mock_storage.get_sales_data.call_args
-    assert isinstance(args[0], datetime)  # start_date
-    assert isinstance(args[1], datetime)  # end_date
+    # storage.list가 올바른 인수로 호출되었는지 확인
+    mock_storage.list.assert_called_once()
+    args, kwargs = mock_storage.list.call_args
+    assert args[0] == "orders"  # table name
+    assert "filters" in kwargs  # filters should be provided
 
     # storage.upsert가 올바른 인수로 호출되었는지 확인
     mock_storage.upsert.assert_called_once()
@@ -107,7 +110,7 @@ async def test_sync_sales_data_success(sales_synchronizer, mock_storage):
 @pytest.mark.asyncio
 async def test_sync_sales_data_no_orders(sales_synchronizer, mock_storage):
     """주문 데이터가 없는 경우 동기화 테스트"""
-    mock_storage.list.return_value = AsyncMock(return_value=[])()
+    mock_storage.list.return_value = []
 
     await sales_synchronizer.sync_sales_data(lookback_days=7)
 
@@ -122,18 +125,16 @@ async def test_sync_sales_data_product_not_found(sales_synchronizer, mock_storag
     mock_storage.get_processed_product.return_value = None
 
     # 주문 데이터는 있지만 상품 정보가 없는 경우
-    mock_storage.list.return_value = AsyncMock(
-        return_value=[
-            {
-                "order_date": datetime.now() - timedelta(days=1),
-                "marketplace_id": "mp1",
-                "account_id": "acc1",
-                "items": [
-                    {"product_id": "unknown_prod", "quantity": 1, "total_amount": Decimal("100")}
-                ],
-            }
-        ]
-    )()
+    mock_storage.list.return_value = [
+        {
+            "order_date": datetime.now() - timedelta(days=1),
+            "marketplace_id": "mp1",
+            "account_id": "acc1",
+            "items": [
+                {"product_id": "unknown_prod", "quantity": 1, "total_amount": Decimal("100")}
+            ],
+        }
+    ]
 
     await sales_synchronizer.sync_sales_data(lookback_days=7)
 
